@@ -218,8 +218,8 @@ class TransactionController extends Controller
     // Buat Snap Token Midtrans
     private function createMidtransSnapToken(Transaction $transaction, array $items): ?string
     {
-        \Midtrans\Config::$serverKey    = config('services.midtrans.server_key');
-        \Midtrans\Config::$isProduction = config('services.midtrans.is_production', false);
+        \Midtrans\Config::$serverKey    = env('MIDTRANS_SERVER_KEY');
+        \Midtrans\Config::$isProduction = env('MIDTRANS_IS_PRODUCTION', false) === 'true' ? true : false;
         \Midtrans\Config::$isSanitized  = true;
         \Midtrans\Config::$is3ds        = true;
 
@@ -243,6 +243,10 @@ class TransactionController extends Controller
         ];
 
         try {
+            Log::info('Midtrans config check', [
+                'server_key' => env('MIDTRANS_SERVER_KEY'),
+                'is_production' => env('MIDTRANS_IS_PRODUCTION'),
+            ]);
             return \Midtrans\Snap::getSnapToken($params);
         } catch (\Exception $e) {
             Log::error('Midtrans Snap error: ' . $e->getMessage());

@@ -23,9 +23,11 @@ class BusinessController extends Controller
             'name'        => 'required|string|max:255',
             'description' => 'nullable|string',
             'logo'        => 'nullable|image|max:2048',
+            'tax_name'    => 'nullable|string|max:50',
+            'tax_rate'    => 'nullable|numeric|min:0|max:100',
         ]);
 
-        $data = $request->only(['name', 'description']);
+        $data = $request->only(['name', 'description', 'tax_name', 'tax_rate']);
 
         if ($request->hasFile('logo')) {
             $data['logo'] = $request->file('logo')->store('businesses', 'public');
@@ -51,9 +53,11 @@ class BusinessController extends Controller
             'description' => 'nullable|string',
             'logo'        => 'nullable|image|max:2048',
             'is_active'   => 'sometimes|boolean',
+            'tax_name'    => 'nullable|string|max:50',
+            'tax_rate'    => 'nullable|numeric|min:0|max:100',
         ]);
 
-        $data = $request->only(['name', 'description', 'is_active']);
+        $data = $request->only(['name', 'description', 'is_active', 'tax_name', 'tax_rate']);
 
         if ($request->hasFile('logo')) {
             $data['logo'] = $request->file('logo')->store('businesses', 'public');
@@ -63,7 +67,7 @@ class BusinessController extends Controller
 
         return response()->json([
             'message' => 'Bisnis berhasil diupdate.',
-            'data'    => $business,
+            'data'    => $business->fresh(),
         ]);
     }
 

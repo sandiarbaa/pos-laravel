@@ -38,7 +38,31 @@ class ProductController extends Controller
         $sortDir = $request->get('sort_dir', 'asc');
         $query->orderBy($sortBy, $sortDir);
 
-        $products = $query->paginate($request->get('per_page', 20));
+        $perPage  = $request->get('per_page', 20);
+        $products = $query->paginate($perPage);
+
+        // Transform: tambahkan field discount & tax yang dibutuhkan Flutter
+        $products->getCollection()->transform(function ($product) {
+            return [
+                'id'               => $product->id,
+                'business_id'      => $product->business_id,
+                'name'             => $product->name,
+                'description'      => $product->description,
+                'sku'              => $product->sku,
+                'price'            => $product->price,
+                'discount_percent' => (float) $product->discount_percent,
+                'discounted_price' => $product->discounted_price,
+                'stock'            => $product->stock,
+                'is_active'        => $product->is_active,
+                'image_url'        => $product->image_url,
+                'business' => $product->business ? [
+                    'id'       => $product->business->id,
+                    'name'     => $product->business->name,
+                    'tax_name' => $product->business->tax_name,
+                    'tax_rate' => (float) $product->business->tax_rate,
+                ] : null,
+            ];
+        });
 
         return response()->json($products);
     }
@@ -79,17 +103,25 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         $request->validate([
-            'business_id' => 'sometimes|exists:businesses,id',
-            'name'        => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
-            'sku'         => 'nullable|string|unique:products,sku,' . $product->id,
-            'price'       => 'sometimes|integer|min:0',
-            'stock'       => 'sometimes|integer|min:0',
-            'image'       => 'nullable|image|max:2048',
-            'is_active'   => 'sometimes|boolean',
+            'business_id'      => 'sometimes|exists:businesses,id',
+            'name'             => 'sometimes|string|max:255',
+            'description'      => 'nullable|string',
+            'sku'              => 'nullable|string|unique:products,sku,' . $product->id,
+            'price'            => 'sometimes|integer|min:0',
+            'stock'            => 'sometimes|integer|min:0',
+            'image'            => 'nullable|image|max:2048',
+            'is_active'        => 'sometimes|boolean',
+            'discount_percent' => 'nullable|numeric|min:0|max:100', // fix
         ]);
 
-        $data = $request->only(['business_id', 'name', 'description', 'sku', 'price', 'stock', 'is_active']);
+        $data = $request->only(['business_id', 'name', 'description', 'sku', 'price', 'stock', 'is_active', 'discount_percent']); // fix
+
+        // Hitung ulang discounted_price otomatis
+        $price = $data['price'] ?? $product->price;
+        $discPct = $data['discount_percent'] ?? $product->discount_percent;
+        $data['discounted_price'] = $discPct > 0
+            ? (int) round($price * (1 - $discPct / 100))
+            : $price;
 
         if ($request->hasFile('image')) {
             $data['image'] = $request->file('image')->store('products', 'public');

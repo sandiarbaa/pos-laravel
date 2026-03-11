@@ -33,14 +33,25 @@ class AuthController extends Controller
 
         $token = $user->createToken('pos-token')->plainTextToken;
 
+        // Load bisnis kalau kasir atau admin
+        $user->load('business');
+
         return response()->json([
             'message' => 'Login berhasil.',
             'token'   => $token,
             'user'    => [
-                'id'    => $user->id,
-                'name'  => $user->name,
-                'email' => $user->email,
-                'role'  => $user->role,
+                'id'          => $user->id,
+                'name'        => $user->name,
+                'email'       => $user->email,
+                'role'        => $user->role,
+                'business_id' => $user->business_id,
+                'business'    => $user->business ? [
+                    'id'       => $user->business->id,
+                    'name'     => $user->business->name,
+                    'logo'     => $user->business->logo,
+                    'tax_name' => $user->business->tax_name,
+                    'tax_rate' => $user->business->tax_rate,
+                ] : null,
             ],
         ]);
     }

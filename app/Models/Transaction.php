@@ -20,13 +20,16 @@ class Transaction extends Model
         'midtrans_transaction_id',
         'midtrans_snap_token',
         'notes',
+        'cancel_reason',
         'paid_at',
+        'cancelled_at',
     ];
 
     protected function casts(): array
     {
         return [
             'paid_at' => 'datetime',
+            'cancelled_at'  => 'datetime',
             'subtotal' => 'integer',
             'tax' => 'integer',
             'discount' => 'integer',

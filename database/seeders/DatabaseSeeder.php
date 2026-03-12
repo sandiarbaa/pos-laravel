@@ -41,7 +41,7 @@ class DatabaseSeeder extends Seeder
 
         // ========== KASIR ==========
         User::create([
-            'name'        => 'Kasir Cafe 1',
+            'name'        => 'Andre',
             'email'       => 'kasir1cafe@gvipos.com',
             'password'    => Hash::make('password'),
             'role'        => 'kasir',
@@ -50,7 +50,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         User::create([
-            'name'        => 'Kasir Retail 1',
+            'name'        => 'Azriel',
             'email'       => 'kasir1retail@gvipos.com',
             'password'    => Hash::make('password'),
             'role'        => 'kasir',
@@ -59,7 +59,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         User::create([
-            'name'        => 'Kasir Service 1',
+            'name'        => 'Amat',
             'email'       => 'kasir1service@gvipos.com',
             'password'    => Hash::make('password'),
             'role'        => 'kasir',

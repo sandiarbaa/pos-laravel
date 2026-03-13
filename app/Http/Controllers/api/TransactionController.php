@@ -126,6 +126,7 @@ class TransactionController extends Controller
 
             if ($request->payment_method === 'cash') {
                 $transaction->update(['status' => 'paid', 'paid_at' => now()]);
+                $this->deductStock($items);
                 DB::commit();
                 return response()->json([
                     'message'    => 'Transaksi berhasil.',
@@ -268,6 +269,13 @@ class TransactionController extends Controller
                 'midtrans_transaction_id' => $midtransTransId,
                 'paid_at'                 => now(),
             ]);
+            // Kurangi stok saat non-cash berhasil dibayar
+            $items = $transaction->items->map(fn($i) => [
+                'product_id' => $i->product_id,
+                'quantity'   => $i->quantity,
+                'source'     => $i->source,
+            ])->toArray();
+            $this->deductStock($items);
         } elseif (in_array($transactionStatus, ['cancel', 'deny', 'expire'])) {
             $transaction->update(['status' => 'cancelled']);
         }
@@ -335,6 +343,24 @@ class TransactionController extends Controller
     // ─────────────────────────────────────────────
     // PRIVATE HELPERS
     // ─────────────────────────────────────────────
+    private function deductStock(array $items): void
+    {
+        foreach ($items as $item) {
+            $productId = $item['product_id'] ?? null;
+            $source    = $item['source'] ?? 'pos';
+            $qty       = $item['quantity'] ?? 1;
+
+            if ($source === 'pos' && $productId) {
+                // Kurangi stok di tabel products POS
+                \App\Models\Product::where('id', $productId)
+                    ->where('stock', '>', 0)
+                    ->decrement('stock', $qty);
+            }
+            // source 'gvi' — stok di GVI-Stock, belum dihandle di sini
+            // bisa ditambah HTTP call ke GVI-Stock API nanti
+        }
+    }
+
     private function transform(Transaction $t): array
     {
         return [

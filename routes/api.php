@@ -58,4 +58,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('transactions', TransactionController::class)->only(['index', 'store', 'show']);
     Route::put('/transactions/{id}/cancel', [TransactionController::class, 'cancel']);
     // Route::get('/transactions/export', [TransactionController::class, 'export']);
+    Route::post('/transactions/cancel-direct', [TransactionController::class, 'storeCancelled']);
 });

@@ -428,38 +428,14 @@ class TransactionController extends Controller
 
     private function exportCsv($transactions)
     {
-        $filename = 'transaksi-' . now()->format('Ymd-His') . '.csv';
-        $callback = function () use ($transactions) {
-            $file = fopen('php://output', 'w');
-            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
-            fputcsv($file, ['No', 'Invoice', 'Tanggal', 'Kasir', 'Bisnis', 'Metode', 'Status', 'Subtotal', 'Pajak', 'Diskon', 'Total', 'Alasan Batal', 'Item']);
-            foreach ($transactions as $i => $t) {
-                $items = $t->items->map(fn($item) => "{$item->product_name} x{$item->quantity}")->join('; ');
-                fputcsv($file, [
-                    $i + 1,
-                    $t->invoice_number,
-                    $t->created_at->format('d/m/Y H:i'),
-                    $t->user?->name ?? '-',
-                    $t->business?->name ?? '-',
-                    strtoupper($t->payment_method),
-                    strtoupper($t->status),
-                    $t->subtotal,
-                    $t->tax,
-                    $t->discount,
-                    $t->total,
-                    $t->cancel_reason ?? '-',
-                    $items,
-                ]);
-            }
-            fclose($file);
-        };
-        return response()->stream($callback, 200, [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"$filename\"",
-        ]);
+        $filename = 'laporan-transaksi-' . now()->format('Ymd-His') . '.xlsx';
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\TransactionsExport($transactions),
+            $filename
+        );
     }
 
-    private function exportPdf($transactions)
+        private function exportPdf($transactions)
     {
         $total_revenue = $transactions->where('status', 'paid')->sum('total');
         $html = '<!DOCTYPE html><html><head><meta charset="UTF-8">

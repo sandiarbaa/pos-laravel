@@ -5,12 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Business;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class BusinessController extends Controller
 {
     public function index()
     {
-        $businesses = Business::where('is_active', true)
+        $businesses = Business::orderBy('is_active', 'desc')
             ->orderBy('name')
             ->get();
 
@@ -37,7 +38,7 @@ class BusinessController extends Controller
 
         return response()->json([
             'message' => 'Bisnis berhasil dibuat.',
-            'data'    => $business,
+            'data'    => $business->fresh(),
         ], 201);
     }
 
@@ -46,6 +47,7 @@ class BusinessController extends Controller
         return response()->json(['data' => $business]);
     }
 
+    // Dipanggil via PUT /businesses/{id} maupun POST /businesses/{id} (multipart)
     public function update(Request $request, Business $business)
     {
         $request->validate([
@@ -57,9 +59,16 @@ class BusinessController extends Controller
             'tax_rate'    => 'nullable|numeric|min:0|max:100',
         ]);
 
-        $data = $request->only(['name', 'description', 'is_active', 'tax_name', 'tax_rate']);
+        $data = array_filter(
+            $request->only(['name', 'description', 'is_active', 'tax_name', 'tax_rate']),
+            fn($v) => $v !== null && $v !== ''
+        );
 
         if ($request->hasFile('logo')) {
+            // Hapus logo lama
+            if ($business->logo) {
+                Storage::disk('public')->delete($business->logo);
+            }
             $data['logo'] = $request->file('logo')->store('businesses', 'public');
         }
 

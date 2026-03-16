@@ -14,18 +14,16 @@ use App\Http\Controllers\Api\UserController;
 |--------------------------------------------------------------------------
 */
 Route::post('/login', [AuthController::class, 'login']);
-
-// Webhook Midtrans — tidak pakai auth (Midtrans yang hit ini)
 Route::post('/webhook/midtrans', [TransactionController::class, 'webhook']);
-
-// Export Reporting in Browser
-Route::get('/transactions/export', [TransactionController::class, 'export']);
 
 /*
 |--------------------------------------------------------------------------
 | Protected Routes (Sanctum)
 |--------------------------------------------------------------------------
 */
+// Export (di luar sanctum karena dibuka di browser — auth via query token)
+Route::get('/transactions/export', [TransactionController::class, 'export']);
+
 Route::middleware('auth:sanctum')->group(function () {
 
     // Auth
@@ -37,16 +35,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/users', [UserController::class, 'store']);
     Route::get('/users/{id}', [UserController::class, 'show']);
     Route::put('/users/{id}', [UserController::class, 'update']);
+    Route::post('/users/{id}', [UserController::class, 'update']); // multipart photo support
     Route::put('/users/{id}/toggle-active', [UserController::class, 'toggleActive']);
     Route::delete('/users/{id}', [UserController::class, 'destroy']);
 
     // Businesses
     Route::apiResource('businesses', BusinessController::class);
+    Route::post('/businesses/{business}', [BusinessController::class, 'update']); // multipart upload support
 
     // Products (POS sendiri)
     Route::apiResource('products', ProductController::class);
+    Route::post('/products/{product}', [ProductController::class, 'update']); // multipart upload support
 
-    // GVI-Stock proxy (Flutter hit POS Laravel, POS Laravel hit GVI-Stock)
+    // GVI-Stock proxy
     Route::prefix('gvi')->group(function () {
         Route::get('/item-types', [GviStockController::class, 'itemTypes']);
         Route::get('/item-variants', [GviStockController::class, 'itemVariants']);
@@ -57,6 +58,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/transactions/today-summary', [TransactionController::class, 'todaySummary']);
     Route::apiResource('transactions', TransactionController::class)->only(['index', 'store', 'show']);
     Route::put('/transactions/{id}/cancel', [TransactionController::class, 'cancel']);
-    // Route::get('/transactions/export', [TransactionController::class, 'export']);
     Route::post('/transactions/cancel-direct', [TransactionController::class, 'storeCancelled']);
 });

@@ -12,6 +12,13 @@ class Business extends Model
         'is_active', 'owner_id', 'tax_name', 'tax_rate',
     ];
 
+    protected $appends = ['logo_url'];
+
+    public function getLogoUrlAttribute(): ?string
+    {
+        return $this->logo ? asset('storage/' . $this->logo) : null;
+    }
+
     protected function casts(): array
     {
         return [

@@ -41,9 +41,10 @@ class UserController extends Controller
             'email'       => 'required|email|unique:users,email',
             'password'    => 'required|string|min:6',
             'business_id' => 'nullable|exists:businesses,id',
+            'photo'       => 'nullable|image|max:2048',
         ]);
 
-        $user = User::create([
+        $data = [
             'name'        => $request->name,
             'email'       => $request->email,
             'password'    => Hash::make($request->password),
@@ -51,7 +52,13 @@ class UserController extends Controller
             'business_id' => $request->business_id,
             'owner_id'    => $me->id,
             'is_active'   => true,
-        ]);
+        ];
+
+        if ($request->hasFile('photo')) {
+            $data['photo'] = $request->file('photo')->store('users', 'public');
+        }
+
+        $user = User::create($data);
 
         $user->load('business');
 
@@ -86,11 +93,15 @@ class UserController extends Controller
             'email'       => 'sometimes|email|unique:users,email,' . $id,
             'password'    => 'sometimes|string|min:6',
             'business_id' => 'sometimes|nullable|exists:businesses,id',
+            'photo'       => 'nullable|image|max:2048',
         ]);
 
         $data = $request->only(['name', 'email', 'business_id']);
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);
+        }
+        if ($request->hasFile('photo')) {
+            $data['photo'] = $request->file('photo')->store('users', 'public');
         }
 
         $user->update($data);
@@ -147,6 +158,7 @@ class UserController extends Controller
             'is_active'   => $u->is_active,
             'business_id' => $u->business_id,
             'business'    => $u->business ? ['id' => $u->business->id, 'name' => $u->business->name] : null,
+            'photo_url'   => $u->photo ? asset('storage/' . $u->photo) : null,
             'created_at'  => $u->created_at?->toISOString(),
         ];
     }

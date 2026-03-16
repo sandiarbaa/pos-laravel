@@ -13,7 +13,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name', 'email', 'password', 'role',
-        'is_active', 'business_id', 'owner_id',
+        'is_active', 'business_id', 'owner_id', 'photo',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -32,11 +32,6 @@ class User extends Authenticatable
         return $this->hasMany(Product::class);
     }
 
-    public function transactions()
-    {
-        return $this->hasMany(Transaction::class);
-    }
-
     public function business()
     {
         return $this->belongsTo(Business::class);
@@ -50,6 +45,11 @@ class User extends Authenticatable
     public function kasirs()
     {
         return $this->hasMany(User::class, 'owner_id');
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
     }
 
     public function isSuperAdmin(): bool

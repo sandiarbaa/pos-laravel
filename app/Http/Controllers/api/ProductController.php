@@ -60,6 +60,7 @@ class ProductController extends Controller
                     'name'     => $product->business->name,
                     'tax_name' => $product->business->tax_name,
                     'tax_rate' => (float) $product->business->tax_rate,
+                    'logo_url' => $product->business->logo_url,
                 ] : null,
             ];
         });

@@ -1,0 +1,5 @@
+path: ./dataset
+train: images/train
+val: images/val
+nc: 5
+names: ['nasi_goreng', 'ayam_geprek', 'mie_ayam', 'es_teh', 'jus_alpukat']

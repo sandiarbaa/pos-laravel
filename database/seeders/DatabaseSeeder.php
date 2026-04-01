@@ -20,51 +20,79 @@ class DatabaseSeeder extends Seeder
             'role'     => 'superadmin',
         ]);
 
-        // ========== BUSINESSES ==========
+        // ========== ADMIN (Owner Bisnis) ==========
+        $adminCafe = User::create([
+            'name'     => 'Owner GVI Cafe',
+            'email'    => 'admin.cafe@gvipos.com',
+            'password' => Hash::make('password'),
+            'role'     => 'admin',
+            'is_active' => true,
+        ]);
+
+        $adminRetail = User::create([
+            'name'     => 'Owner GVI Retail',
+            'email'    => 'admin.retail@gvipos.com',
+            'password' => Hash::make('password'),
+            'role'     => 'admin',
+            'is_active' => true,
+        ]);
+
+        $adminService = User::create([
+            'name'     => 'Owner GVI Service',
+            'email'    => 'admin.service@gvipos.com',
+            'password' => Hash::make('password'),
+            'role'     => 'admin',
+            'is_active' => true,
+        ]);
+
+        // ========== BUSINESSES — owner_id sesuai admin ==========
         $cafe = Business::create([
             'name'        => 'GVI Cafe',
             'description' => 'Cafe & minuman GVI',
-            'owner_id'    => $superadmin->id,
+            'owner_id'    => $adminCafe->id,
         ]);
 
         $retail = Business::create([
             'name'        => 'GVI Retail',
             'description' => 'Toko retail GVI',
-            'owner_id'    => $superadmin->id,
+            'owner_id'    => $adminRetail->id,
         ]);
 
         $service = Business::create([
             'name'        => 'GVI Service',
             'description' => 'Layanan & inventory GVI',
-            'owner_id'    => $superadmin->id,
+            'owner_id'    => $adminService->id,
         ]);
 
-        // ========== KASIR ==========
+        // ========== KASIR — owner_id ke admin masing2 ==========
         User::create([
-            'name'        => 'Andre',
-            'email'       => 'kasir1cafe@gvipos.com',
+            'name'        => 'Kasir Cafe 1',
+            'email'       => 'kasir1.cafe@gvipos.com',
             'password'    => Hash::make('password'),
             'role'        => 'kasir',
+            'is_active'   => true,
             'business_id' => $cafe->id,
-            'owner_id'    => $superadmin->id,
+            'owner_id'    => $adminCafe->id,
         ]);
 
         User::create([
-            'name'        => 'Azriel',
-            'email'       => 'kasir1retail@gvipos.com',
+            'name'        => 'Kasir Retail 1',
+            'email'       => 'kasir1.retail@gvipos.com',
             'password'    => Hash::make('password'),
             'role'        => 'kasir',
+            'is_active'   => true,
             'business_id' => $retail->id,
-            'owner_id'    => $superadmin->id,
+            'owner_id'    => $adminRetail->id,
         ]);
 
         User::create([
-            'name'        => 'Amat',
-            'email'       => 'kasir1service@gvipos.com',
+            'name'        => 'Kasir Service 1',
+            'email'       => 'kasir1.service@gvipos.com',
             'password'    => Hash::make('password'),
             'role'        => 'kasir',
+            'is_active'   => true,
             'business_id' => $service->id,
-            'owner_id'    => $superadmin->id,
+            'owner_id'    => $adminService->id,
         ]);
 
         // ========== PRODUK CAFE ==========
@@ -115,6 +143,9 @@ class DatabaseSeeder extends Seeder
 
         echo "✅ Seeder berhasil!\n";
         echo "superadmin@gvipos.com / password\n";
+        echo "admin.cafe@gvipos.com / password\n";
+        echo "admin.retail@gvipos.com / password\n";
+        echo "admin.service@gvipos.com / password\n";
         echo "kasir1.cafe@gvipos.com / password\n";
         echo "kasir1.retail@gvipos.com / password\n";
         echo "kasir1.service@gvipos.com / password\n";

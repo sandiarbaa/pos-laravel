@@ -11,24 +11,42 @@ class BusinessController extends Controller
 {
     public function index()
     {
-        $businesses = Business::orderBy('is_active', 'desc')
-            ->orderBy('name')
-            ->get();
+        $user = auth()->user();
 
-        return response()->json(['data' => $businesses]);
+        $query = Business::orderBy('is_active', 'desc')->orderBy('name');
+
+        if ($user->isAdmin()) {
+            $query->where('owner_id', $user->id);
+        }
+
+        return response()->json(['data' => $query->get()]);
     }
 
     public function store(Request $request)
     {
+        $user = $request->user();
+
+        if (!$user->isSuperAdmin() && !$user->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
         $request->validate([
             'name'        => 'required|string|max:255',
             'description' => 'nullable|string',
             'logo'        => 'nullable|image|max:2048',
             'tax_name'    => 'nullable|string|max:50',
             'tax_rate'    => 'nullable|numeric|min:0|max:100',
+            'address'     => 'nullable|string|max:500', // tambah
+            'phone'       => 'nullable|string|max:20',  // tambah
+            'city'        => 'nullable|string|max:100', // tambah
         ]);
 
-        $data = $request->only(['name', 'description', 'tax_name', 'tax_rate']);
+        $data = $request->only([
+            'name', 'description', 'tax_name', 'tax_rate',
+            'address', 'phone', 'city', // tambah
+        ]);
+
+        $data['owner_id'] = $user->isAdmin() ? $user->id : ($request->owner_id ?? null);
 
         if ($request->hasFile('logo')) {
             $data['logo'] = $request->file('logo')->store('businesses', 'public');
@@ -47,9 +65,13 @@ class BusinessController extends Controller
         return response()->json(['data' => $business]);
     }
 
-    // Dipanggil via PUT /businesses/{id} maupun POST /businesses/{id} (multipart)
     public function update(Request $request, Business $business)
     {
+        $user = $request->user();
+        if ($user->isAdmin() && $business->owner_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
         $request->validate([
             'name'        => 'sometimes|string|max:255',
             'description' => 'nullable|string',
@@ -57,15 +79,20 @@ class BusinessController extends Controller
             'is_active'   => 'sometimes|boolean',
             'tax_name'    => 'nullable|string|max:50',
             'tax_rate'    => 'nullable|numeric|min:0|max:100',
+            'address'     => 'nullable|string|max:500', // tambah
+            'phone'       => 'nullable|string|max:20',  // tambah
+            'city'        => 'nullable|string|max:100', // tambah
         ]);
 
         $data = array_filter(
-            $request->only(['name', 'description', 'is_active', 'tax_name', 'tax_rate']),
+            $request->only([
+                'name', 'description', 'is_active', 'tax_name', 'tax_rate',
+                'address', 'phone', 'city', // tambah
+            ]),
             fn($v) => $v !== null && $v !== ''
         );
 
         if ($request->hasFile('logo')) {
-            // Hapus logo lama
             if ($business->logo) {
                 Storage::disk('public')->delete($business->logo);
             }
@@ -82,6 +109,11 @@ class BusinessController extends Controller
 
     public function destroy(Business $business)
     {
+        $user = auth()->user();
+        if ($user->isAdmin() && $business->owner_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
         $business->update(['is_active' => false]);
 
         return response()->json([

@@ -10,6 +10,7 @@ class Business extends Model
     protected $fillable = [
         'name', 'slug', 'description', 'logo',
         'is_active', 'owner_id', 'tax_name', 'tax_rate',
+        'address', 'phone', 'city',
     ];
 
     protected $appends = ['logo_url'];

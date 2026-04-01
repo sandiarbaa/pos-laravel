@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Transaction;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -14,8 +15,26 @@ class TransactionController extends Controller
     // ─────────────────────────────────────────────
     public function index(Request $request)
     {
+        $me       = $request->user();
+        $kasirIds = null;
+
+        // Admin hanya lihat transaksi dari kasir miliknya
+        if ($me->isAdmin()) {
+            $kasirIds = User::where('owner_id', $me->id)->pluck('id');
+            // Kalau belum ada kasir → return empty
+            if ($kasirIds->isEmpty()) {
+                return response()->json([
+                    'data' => ['data' => []],
+                    'meta' => ['current_page' => 1, 'last_page' => 1, 'per_page' => 15, 'total' => 0],
+                    'summary' => ['total_revenue' => 0, 'total_cancelled' => 0, 'total_all' => 0],
+                ]);
+            }
+        }
+
         $query = Transaction::with(['user:id,name,email', 'business:id,name', 'items'])
             ->orderByDesc('created_at');
+
+        if ($kasirIds) $query->whereIn('user_id', $kasirIds);
 
         if ($request->filled('user_id'))     $query->where('user_id', $request->user_id);
         if ($request->filled('business_id')) $query->where('business_id', $request->business_id);
@@ -34,7 +53,9 @@ class TransactionController extends Controller
         $perPage      = $request->get('per_page', 15);
         $transactions = $query->paginate($perPage);
 
+        // Summary — ikut filter owner
         $summaryQuery = Transaction::query();
+        if ($kasirIds) $summaryQuery->whereIn('user_id', $kasirIds);
         if ($request->filled('user_id'))     $summaryQuery->where('user_id', $request->user_id);
         if ($request->filled('business_id')) $summaryQuery->where('business_id', $request->business_id);
         if ($request->filled('start_date'))  $summaryQuery->whereDate('created_at', '>=', $request->start_date);

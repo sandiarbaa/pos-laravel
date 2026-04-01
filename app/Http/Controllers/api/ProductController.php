@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Business;
 use App\Models\Product;
 use Illuminate\Http\Request;
 
@@ -10,7 +11,14 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
+        $user  = $request->user();
         $query = Product::with('business')->where('is_active', true);
+
+        // Admin hanya lihat produk dari bisnis miliknya
+        if ($user && $user->isAdmin()) {
+            $bizIds = Business::where('owner_id', $user->id)->pluck('id');
+            $query->whereIn('business_id', $bizIds);
+        }
 
         // Filter by business
         if ($request->filled('business_id')) {
@@ -41,7 +49,6 @@ class ProductController extends Controller
         $perPage  = $request->get('per_page', 20);
         $products = $query->paginate($perPage);
 
-        // Transform: tambahkan field discount & tax yang dibutuhkan Flutter
         $products->getCollection()->transform(function ($product) {
             return [
                 'id'               => $product->id,
@@ -61,6 +68,9 @@ class ProductController extends Controller
                     'tax_name' => $product->business->tax_name,
                     'tax_rate' => (float) $product->business->tax_rate,
                     'logo_url' => $product->business->logo_url,
+                    'address'  => $product->business->address,
+                    'phone'    => $product->business->phone,
+                    'city'     => $product->business->city,
                 ] : null,
             ];
         });
@@ -112,13 +122,16 @@ class ProductController extends Controller
             'stock'            => 'sometimes|integer|min:0',
             'image'            => 'nullable|image|max:2048',
             'is_active'        => 'sometimes|boolean',
-            'discount_percent' => 'nullable|numeric|min:0|max:100', // fix
+            'discount_percent' => 'nullable|numeric|min:0|max:100',
         ]);
 
-        $data = $request->only(['business_id', 'name', 'description', 'sku', 'price', 'stock', 'is_active', 'discount_percent']); // fix
+        $data = $request->only([
+            'business_id', 'name', 'description', 'sku',
+            'price', 'stock', 'is_active', 'discount_percent',
+        ]);
 
         // Hitung ulang discounted_price otomatis
-        $price = $data['price'] ?? $product->price;
+        $price   = $data['price'] ?? $product->price;
         $discPct = $data['discount_percent'] ?? $product->discount_percent;
         $data['discounted_price'] = $discPct > 0
             ? (int) round($price * (1 - $discPct / 100))

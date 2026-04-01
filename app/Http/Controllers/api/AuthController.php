@@ -49,6 +49,7 @@ class AuthController extends Controller
                     'id'       => $user->business->id,
                     'name'     => $user->business->name,
                     'logo'     => $user->business->logo,
+                    'logo_url' => $user->business->logo_url,
                     'tax_name' => $user->business->tax_name,
                     'tax_rate' => $user->business->tax_rate,
                 ] : null,

@@ -9,30 +9,31 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
-    // GET /users — superadmin lihat semua kasir
+    // GET /users — superadmin lihat semua kasir, admin lihat kasir miliknya
     public function index(Request $request)
     {
         $me = $request->user();
 
-        if (!$me->isSuperAdmin()) {
+        if (!$me->isSuperAdmin() && !$me->isAdmin()) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
-        $users = User::where('role', 'kasir')
-            ->with('business')
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(fn($u) => $this->transform($u));
+        $query = User::where('role', 'kasir')->with('business')->orderByDesc('created_at');
 
-        return response()->json(['data' => $users]);
+        // Admin hanya lihat kasir miliknya
+        if ($me->isAdmin()) {
+            $query->where('owner_id', $me->id);
+        }
+
+        return response()->json(['data' => $query->get()->map(fn($u) => $this->transform($u))]);
     }
 
-    // POST /users — superadmin buat akun kasir
+    // POST /users — superadmin atau admin buat akun kasir
     public function store(Request $request)
     {
         $me = $request->user();
 
-        if (!$me->isSuperAdmin()) {
+        if (!$me->isSuperAdmin() && !$me->isAdmin()) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
@@ -71,22 +72,31 @@ class UserController extends Controller
     // GET /users/{id}
     public function show(Request $request, $id)
     {
-        if (!$request->user()->isSuperAdmin()) {
+        $me   = $request->user();
+        $user = User::with('business')->findOrFail($id);
+
+        if (!$me->isSuperAdmin() && !$me->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+        if ($me->isAdmin() && $user->owner_id !== $me->id) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
-        $user = User::with('business')->findOrFail($id);
         return response()->json(['data' => $this->transform($user)]);
     }
 
     // PUT /users/{id} — edit nama, email, password, bisnis
     public function update(Request $request, $id)
     {
-        if (!$request->user()->isSuperAdmin()) {
+        $me   = $request->user();
+        $user = User::findOrFail($id);
+
+        if (!$me->isSuperAdmin() && !$me->isAdmin()) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
-
-        $user = User::findOrFail($id);
+        if ($me->isAdmin() && $user->owner_id !== $me->id) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
 
         $request->validate([
             'name'        => 'sometimes|string|max:255',
@@ -116,11 +126,16 @@ class UserController extends Controller
     // PUT /users/{id}/toggle-active
     public function toggleActive(Request $request, $id)
     {
-        if (!$request->user()->isSuperAdmin()) {
+        $me   = $request->user();
+        $user = User::findOrFail($id);
+
+        if (!$me->isSuperAdmin() && !$me->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+        if ($me->isAdmin() && $user->owner_id !== $me->id) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
-        $user = User::findOrFail($id);
         $user->update(['is_active' => !$user->is_active]);
 
         return response()->json([
@@ -135,10 +150,12 @@ class UserController extends Controller
         $me   = $request->user();
         $user = User::findOrFail($id);
 
-        if (!$me->isSuperAdmin()) {
+        if (!$me->isSuperAdmin() && !$me->isAdmin()) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
-
+        if ($me->isAdmin() && $user->owner_id !== $me->id) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
         if ($me->id === $user->id) {
             return response()->json(['message' => 'Tidak bisa hapus akun sendiri.'], 422);
         }

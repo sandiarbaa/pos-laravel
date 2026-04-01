@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BusinessController;
+use App\Http\Controllers\Api\FoodDetectionController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\GviStockController;
 use App\Http\Controllers\Api\TransactionController;
@@ -59,4 +60,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('transactions', TransactionController::class)->only(['index', 'store', 'show']);
     Route::put('/transactions/{id}/cancel', [TransactionController::class, 'cancel']);
     Route::post('/transactions/cancel-direct', [TransactionController::class, 'storeCancelled']);
+
+    // Food Detection
+    Route::post('/detect-food', [FoodDetectionController::class, 'detect']);
 });

@@ -11,7 +11,7 @@ import roboflow
 # ================================================
 API_KEY     = "IsVz0HmwwXQNPjwRWC9Y"
 WORKSPACE   = "kuros-workspace"
-PROJECT     = "menu-detector-v4"
+PROJECT     = "menu-detector-v6"
 DATASET_DIR = "dataset"
 # ================================================
 
@@ -48,8 +48,11 @@ def upload_split(split):
                         "2": "mie_ayam",
                         "3": "es_teh",
                         "4": "jus_alpukat",
-                        "5": "telur_ceplok",
-                        "6": "ikan_goreng",
+                        "5": "tahu_goreng",
+                        "6": "tempe_goreng",
+                        "7": "telur_ceplok",
+                        "8": "rendang",
+                        "9": "ayam_goreng",
                     },
                     split=split,
                     num_retry_uploads=3,

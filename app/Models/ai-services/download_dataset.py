@@ -7,9 +7,13 @@ MENU_LIST = [
     {"folder": "mie_ayam",     "keyword": "mie ayam indonesia"},
     {"folder": "es_teh",       "keyword": "es teh manis indonesia"},
     {"folder": "jus_alpukat",  "keyword": "jus alpukat indonesia"},
+    {"folder": "tahu_goreng",  "keyword": "tahu goreng indonesia"},
+    {"folder": "tempe_goreng", "keyword": "tempe goreng indonesia"},
     {"folder": "telur_ceplok", "keyword": "telur ceplok goreng indonesia"},
-    {"folder": "ikan_goreng",  "keyword": "ikan goreng indonesia"},
+    {"folder": "rendang",      "keyword": "rendang daging sapi indonesia"},
+    {"folder": "ayam_goreng",  "keyword": "ayam goreng indonesia"},
 ]
+
 JUMLAH_FOTO = 300
 
 SPLIT_RATIO = 0.8

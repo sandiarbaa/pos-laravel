@@ -13,8 +13,11 @@ CLASS_MAP = {
     "mie_ayam":     2,
     "es_teh":       3,
     "jus_alpukat":  4,
-    "telur_ceplok": 5,
-    "ikan_goreng":  6,
+    "tahu_goreng":  5,
+    "tempe_goreng": 6,
+    "telur_ceplok": 7,
+    "rendang":      8,
+    "ayam_goreng":  9,
 }
 # ================================================
 

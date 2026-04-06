@@ -12,11 +12,14 @@ MENU_CLASSES = [
     "mie_ayam",
     "es_teh",
     "jus_alpukat",
+    "tahu_goreng",
+    "tempe_goreng",
     "telur_ceplok",
-    "ikan_goreng",
+    "rendang",
+    "ayam_goreng",
 ]
 
-session = ort.InferenceSession("model/best-5-menu.onnx")
+session = ort.InferenceSession("model/best.onnx")
 
 def preprocess(img: np.ndarray) -> np.ndarray:
     img = cv2.resize(img, (640, 640))

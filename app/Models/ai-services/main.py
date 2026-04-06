@@ -16,7 +16,7 @@ MENU_CLASSES = [
     "ikan_goreng",
 ]
 
-session = ort.InferenceSession("model/best.onnx")
+session = ort.InferenceSession("model/best-5-menu.onnx")
 
 def preprocess(img: np.ndarray) -> np.ndarray:
     img = cv2.resize(img, (640, 640))

@@ -24,7 +24,7 @@ Homestead.yaml
 Thumbs.db
 
 # AI Services
-app/Models/ai-services/model/best.onnx
+# app/Models/ai-services/model/best.onnx
 app/Models/ai-services/dataset/
 app/Models/ai-services/dataset_roboflow/
 app/Models/ai-services/_tmp/

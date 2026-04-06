@@ -448,8 +448,11 @@ class TransactionController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            // \Illuminate\Support\Facades\Log::error('Midtrans Snap error: ' . $e->getMessage());
+            // return null;
             \Illuminate\Support\Facades\Log::error('Midtrans Snap error: ' . $e->getMessage());
-            return null;
+            // Temporary: return error message buat debug
+            throw new \Exception('Midtrans error: ' . $e->getMessage());
         }
     }
 

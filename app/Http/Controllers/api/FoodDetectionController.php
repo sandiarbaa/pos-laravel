@@ -21,7 +21,7 @@ class FoodDetectionController extends Controller
             'file',
             file_get_contents($request->file('image')->getPathname()),
             'image.jpg'
-        )->post('http://localhost:8001/detect');
+        )->post('http://localhost:8007/detect');
 
         if (!$response->ok()) {
             return response()->json(['message' => 'Gagal deteksi'], 500);

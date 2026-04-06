@@ -8,11 +8,13 @@ from PIL import Image
 DATASET_DIR = "dataset"
 
 CLASS_MAP = {
-    "nasi_goreng": 0,
-    "ayam_geprek": 1,
-    "mie_ayam":    2,
-    "es_teh":      3,
-    "jus_alpukat": 4,
+    "nasi_goreng":  0,
+    "ayam_geprek":  1,
+    "mie_ayam":     2,
+    "es_teh":       3,
+    "jus_alpukat":  4,
+    "telur_ceplok": 5,
+    "ikan_goreng":  6,
 }
 # ================================================
 

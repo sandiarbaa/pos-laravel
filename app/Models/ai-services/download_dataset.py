@@ -7,9 +7,11 @@ MENU_LIST = [
     {"folder": "mie_ayam",     "keyword": "mie ayam indonesia"},
     {"folder": "es_teh",       "keyword": "es teh manis indonesia"},
     {"folder": "jus_alpukat",  "keyword": "jus alpukat indonesia"},
+    {"folder": "telur_ceplok", "keyword": "telur ceplok goreng indonesia"},
+    {"folder": "ikan_goreng",  "keyword": "ikan goreng indonesia"},
 ]
+JUMLAH_FOTO = 300
 
-JUMLAH_FOTO = 500
 SPLIT_RATIO = 0.8
 OUTPUT_DIR  = "dataset"
 VALID_EXT   = ('.jpg', '.jpeg', '.png', '.webp')

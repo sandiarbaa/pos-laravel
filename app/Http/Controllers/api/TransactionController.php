@@ -415,6 +415,45 @@ class TransactionController extends Controller
         ];
     }
 
+    // INI BUAT PRODUCTION
+    // private function createMidtransSnapToken(Transaction $transaction, array $items): ?string
+    // {
+    //     \Illuminate\Support\Facades\Log::info('Midtrans config', [
+    //         'server_key'    => substr(config('services.midtrans.server_key'), 0, 10) . '...',
+    //         'is_production' => config('services.midtrans.is_production'),
+    //     ]);
+
+    //     \Midtrans\Config::$serverKey    = config('services.midtrans.server_key');
+    //     \Midtrans\Config::$isProduction = (bool) config('services.midtrans.is_production');
+    //     \Midtrans\Config::$isSanitized  = true;
+    //     \Midtrans\Config::$is3ds        = true;
+
+    //     $itemDetails = array_map(fn($item) => [
+    //         'id'       => $item['product_id'] ?? 'gvi-' . ($item['gvi_item_variant_id'] ?? 0),
+    //         'price'    => $item['price'],
+    //         'quantity' => $item['quantity'],
+    //         'name'     => substr($item['product_name'], 0, 50),
+    //     ], $items);
+
+    //     try {
+    //         return \Midtrans\Snap::getSnapToken([
+    //             'transaction_details' => [
+    //                 'order_id'     => $transaction->invoice_number,
+    //                 'gross_amount' => $transaction->total,
+    //             ],
+    //             'item_details'     => $itemDetails,
+    //             'customer_details' => [
+    //                 'first_name' => $transaction->user->name,
+    //                 'email'      => $transaction->user->email,
+    //             ],
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         \Illuminate\Support\Facades\Log::error('Midtrans Snap error: ' . $e->getMessage());
+    //         return null;
+    //     }
+    // }
+
+    // INI BUAT LOCAL DEVELOPMENT, SANDBOX MIDTRANS
     private function createMidtransSnapToken(Transaction $transaction, array $items): ?string
     {
         \Midtrans\Config::$serverKey    = env('MIDTRANS_SERVER_KEY');

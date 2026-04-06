@@ -30,3 +30,4 @@ app/Models/ai-services/dataset_roboflow/
 app/Models/ai-services/_tmp/
 app/Models/ai-services/__pycache__/
 app/Models/ai-services/*.zip
+app/Models/ai-services/dataset_roboflow.zip

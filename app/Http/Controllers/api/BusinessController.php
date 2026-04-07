@@ -36,9 +36,10 @@ class BusinessController extends Controller
             'logo'        => 'nullable|image|max:2048',
             'tax_name'    => 'nullable|string|max:50',
             'tax_rate'    => 'nullable|numeric|min:0|max:100',
-            'address'     => 'nullable|string|max:500', // tambah
-            'phone'       => 'nullable|string|max:20',  // tambah
-            'city'        => 'nullable|string|max:100', // tambah
+            'address'     => 'nullable|string|max:500',
+            'phone'       => 'nullable|string|max:20',
+            'city'        => 'nullable|string|max:100',
+            'qris_image' => 'nullable|image|max:2048',
         ]);
 
         $data = $request->only([
@@ -50,6 +51,10 @@ class BusinessController extends Controller
 
         if ($request->hasFile('logo')) {
             $data['logo'] = $request->file('logo')->store('businesses', 'public');
+        }
+
+        if ($request->hasFile('qris_image')) {
+            $data['qris_image'] = $request->file('qris_image')->store('businesses/qris', 'public');
         }
 
         $business = Business::create($data);
@@ -79,9 +84,10 @@ class BusinessController extends Controller
             'is_active'   => 'sometimes|boolean',
             'tax_name'    => 'nullable|string|max:50',
             'tax_rate'    => 'nullable|numeric|min:0|max:100',
-            'address'     => 'nullable|string|max:500', // tambah
-            'phone'       => 'nullable|string|max:20',  // tambah
-            'city'        => 'nullable|string|max:100', // tambah
+            'address'     => 'nullable|string|max:500',
+            'phone'       => 'nullable|string|max:20',
+            'city'        => 'nullable|string|max:100',
+            'qris_image' => 'nullable|image|max:2048',
         ]);
 
         $data = array_filter(
@@ -97,6 +103,13 @@ class BusinessController extends Controller
                 Storage::disk('public')->delete($business->logo);
             }
             $data['logo'] = $request->file('logo')->store('businesses', 'public');
+        }
+
+        if ($request->hasFile('qris_image')) {
+            if ($business->qris_image) {
+                Storage::disk('public')->delete($business->qris_image);
+            }
+            $data['qris_image'] = $request->file('qris_image')->store('businesses/qris', 'public');
         }
 
         $business->update($data);

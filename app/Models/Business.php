@@ -8,16 +8,21 @@ use Illuminate\Support\Str;
 class Business extends Model
 {
     protected $fillable = [
-        'name', 'slug', 'description', 'logo',
+        'name', 'slug', 'description', 'logo', 'qris_image',
         'is_active', 'owner_id', 'tax_name', 'tax_rate',
         'address', 'phone', 'city',
     ];
 
-    protected $appends = ['logo_url'];
+    protected $appends = ['logo_url', 'qris_image_url'];
 
     public function getLogoUrlAttribute(): ?string
     {
         return $this->logo ? asset('storage/' . $this->logo) : null;
+    }
+
+    public function getQrisImageUrlAttribute(): ?string
+    {
+        return $this->qris_image ? asset('storage/' . $this->qris_image) : null;
     }
 
     protected function casts(): array

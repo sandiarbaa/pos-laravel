@@ -101,7 +101,7 @@ class TransactionController extends Controller
     {
         $request->validate([
             'business_id'                   => 'nullable|exists:businesses,id',
-            'payment_method'                => 'required|in:cash,qris,transfer,card',
+            'payment_method'                => 'required|in:cash,qris',
             'notes'                         => 'nullable|string',
             'items'                         => 'required|array|min:1',
             'items.*.source'                => 'nullable|in:pos,gvi',
@@ -145,28 +145,13 @@ class TransactionController extends Controller
                 ]);
             }
 
-            if ($request->payment_method === 'cash') {
-                $transaction->update(['status' => 'paid', 'paid_at' => now()]);
-                $this->deductStock($items);
-                DB::commit();
-                return response()->json([
-                    'message'    => 'Transaksi berhasil.',
-                    'data'       => $this->transform($transaction->load(['user', 'business', 'items'])),
-                    'snap_token' => null,
-                ], 201);
-            }
-
-            $snapToken = $this->createMidtransSnapToken($transaction, $items);
-            $transaction->update([
-                'midtrans_order_id'   => $transaction->invoice_number,
-                'midtrans_snap_token' => $snapToken,
-            ]);
+            $transaction->update(['status' => 'paid', 'paid_at' => now()]);
+            $this->deductStock($items);
 
             DB::commit();
             return response()->json([
-                'message'    => 'Transaksi berhasil dibuat.',
-                'data'       => $this->transform($transaction->load(['user', 'business', 'items'])),
-                'snap_token' => $snapToken,
+                'message' => 'Transaksi berhasil.',
+                'data'    => $this->transform($transaction->load(['user', 'business', 'items'])),
             ], 201);
 
         } catch (\Exception $e) {

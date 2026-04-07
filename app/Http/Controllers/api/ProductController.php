@@ -71,6 +71,7 @@ class ProductController extends Controller
                     'address'  => $product->business->address,
                     'phone'    => $product->business->phone,
                     'city'     => $product->business->city,
+                    'qris_image_url' => $product->business->qris_image_url,
                 ] : null,
             ];
         });

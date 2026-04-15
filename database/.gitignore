@@ -1,1 +1,29 @@
 *.sqlite*
+# Python
+__pycache__/
+*.pyc
+.venv/
+env/
+
+# AI / ML
+*.pt
+*.onnx
+dataset_*/
+runs_*/
+data/
+models/
+
+# Specific project
+app/Models/ai-services/.venv/
+app/Models/ai-services/dataset_*/
+app/Models/ai-services/runs_*/
+
+# Laravel
+/vendor/
+/node_modules/
+.env
+
+
+# Model
+*.onnx
+*.pt

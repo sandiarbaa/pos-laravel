@@ -47,7 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Products (POS sendiri)
     Route::apiResource('products', ProductController::class);
     Route::post('/products/{product}', [ProductController::class, 'update']); // multipart upload support
-
+    
     // GVI-Stock proxy
     Route::prefix('gvi')->group(function () {
         Route::get('/item-types', [GviStockController::class, 'itemTypes']);

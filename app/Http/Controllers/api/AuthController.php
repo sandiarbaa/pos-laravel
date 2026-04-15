@@ -59,8 +59,23 @@ class AuthController extends Controller
 
     public function user(Request $request)
     {
+        $user = $request->user()->load('business');
         return response()->json([
-            'user' => $request->user(),
+            'user' => [
+                'id'          => $user->id,
+                'name'        => $user->name,
+                'email'       => $user->email,
+                'role'        => $user->role,
+                'business_id' => $user->business_id,
+                'business'    => $user->business ? [
+                    'id'       => $user->business->id,
+                    'name'     => $user->business->name,
+                    'logo'     => $user->business->logo,
+                    'logo_url' => $user->business->logo_url,
+                    'tax_name' => $user->business->tax_name,
+                    'tax_rate' => $user->business->tax_rate,
+                ] : null,
+            ],
         ]);
     }
 

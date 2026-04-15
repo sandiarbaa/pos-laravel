@@ -3,81 +3,65 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
 class FoodDetectionController extends Controller
 {
+    private string $mlApiUrl;
+
+    public function __construct()
+    {
+        $this->mlApiUrl = config('services.ml_api.url', 'http://localhost:5000');
+    }
+
     public function detect(Request $request)
     {
         $request->validate([
-            'image'       => 'required|image|max:5120',
-            'business_id' => 'required|exists:businesses,id',
+            'image'      => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'confidence' => 'nullable|numeric|min:0.1|max:0.95',
         ]);
 
-        // Kirim foto ke FastAPI
-        $response = Http::attach(
-            'file',
-            file_get_contents($request->file('image')->getPathname()),
-            'image.jpg'
-        )->post('http://localhost:8007/detect');
+        try {
+            $confidence = $request->input('confidence', 0.35);
+            $imageFile  = $request->file('image');
 
-        if (!$response->ok()) {
-            return response()->json(['message' => 'Gagal deteksi'], 500);
-        }
+            $response = Http::timeout(30)
+                ->attach(
+                    'image',
+                    file_get_contents($imageFile->path()),
+                    $imageFile->getClientOriginalName()
+                )
+                ->post("{$this->mlApiUrl}/detect", [
+                    'confidence' => $confidence,
+                ]);
 
-        $detections = $response->json()['detections'] ?? [];
-
-        if (empty($detections)) {
-            return response()->json([
-                'message' => 'Tidak ada makanan terdeteksi',
-                'items'   => [],
-            ]);
-        }
-
-        // Match ke tabel products berdasarkan nama
-        $items = [];
-        foreach ($detections as $det) {
-            if ($det['confidence'] < 0.5) continue;
-
-            // Ubah underscore jadi spasi untuk matching
-            // nasi_goreng → nasi goreng
-            $keyword = str_replace('_', ' ', $det['label']);
-
-            $product = Product::where('business_id', $request->business_id)
-                ->where('is_active', true)
-                ->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($keyword) . '%'])
-                ->first();
-
-            if ($product) {
-                $items[] = [
-                    'product_id'   => $product->id,
-                    'product_name' => $product->name,
-                    'price'        => $product->discounted_price > 0
-                                        ? $product->discounted_price
-                                        : $product->price,
-                    'quantity'     => 1,
-                    'confidence'   => $det['confidence'],
-                    'source'       => 'pos',
-                ];
-            } else {
-                // Produk ga ketemu di database
-                $items[] = [
-                    'product_id'   => null,
-                    'product_name' => $det['label'],
-                    'price'        => 0,
-                    'quantity'     => 1,
-                    'confidence'   => $det['confidence'],
-                    'source'       => 'pos',
-                    'not_found'    => true,
-                ];
+            if ($response->failed()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Detection service error',
+                ], 502);
             }
-        }
 
-        return response()->json([
-            'message' => 'Deteksi berhasil',
-            'items'   => $items,
-        ]);
+            $result = $response->json();
+
+            // Bisa tambah logic di sini, misal:
+            // - simpan history ke DB
+            // - mapping label ke produk yang ada di toko
+            // - tambah info harga/kalori
+
+            return response()->json([
+                'success'        => true,
+                'total_detected' => $result['total_detected'],
+                'detected_items' => $result['detected_items'],
+                'detections'     => $result['detections'],
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Detection failed: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

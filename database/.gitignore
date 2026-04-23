@@ -6,7 +6,6 @@ __pycache__/
 env/
 
 # AI / ML
-*.pt
 *.onnx
 dataset_*/
 runs_*/
@@ -17,6 +16,12 @@ models/
 app/Models/ai-services/.venv/
 app/Models/ai-services/dataset_*/
 app/Models/ai-services/runs_*/
+# Docs/guides
+app/Models/ai-services/*.md
+app/Models/ai-services/cek_api.py
+app/Models/ai-services/download_from_roboflow.py
+app/Models/ai-services/download_menu_images.py
+app/Models/ai-services/train_yolov8_local.py
 
 # Laravel
 /vendor/
@@ -26,4 +31,3 @@ app/Models/ai-services/runs_*/
 
 # Model
 *.onnx
-*.pt

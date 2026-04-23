@@ -9,23 +9,68 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
+    // Helper: format satu product jadi array response
+    private function formatProduct(Product $product): array
+    {
+        $business = $product->business;
+
+        // Ambil pajak aktif dari relasi yang sudah di-eager load
+        $activeTaxes = $business
+            ? $business->taxes->where('is_active', true)->values()
+            : collect();
+
+        $totalTaxRate = $activeTaxes->sum('rate');
+        $basePrice    = $product->discounted_price > 0 ? $product->discounted_price : $product->price;
+        $finalPrice   = $totalTaxRate > 0
+            ? (int) round($basePrice * (1 + $totalTaxRate / 100))
+            : $basePrice;
+
+        return [
+            'id'               => $product->id,
+            'business_id'      => $product->business_id,
+            'name'             => $product->name,
+            'description'      => $product->description,
+            'sku'              => $product->sku,
+            'price'            => $product->price,
+            'discount_percent' => (float) $product->discount_percent,
+            'discounted_price' => $product->discounted_price,
+            'final_price'      => $finalPrice,
+            'stock'            => $product->stock,
+            'is_active'        => $product->is_active,
+            'image_url'        => $product->image_url,
+            'taxes'            => $activeTaxes->map(fn($tax) => [
+                'id'   => $tax->id,
+                'name' => $tax->name,
+                'rate' => (float) $tax->rate,
+            ])->values(),
+            'business' => $business ? [
+                'id'             => $business->id,
+                'name'           => $business->name,
+                'logo_url'       => $business->logo_url,
+                'address'        => $business->address,
+                'phone'          => $business->phone,
+                'city'           => $business->city,
+                'qris_image_url' => $business->qris_image_url,
+            ] : null,
+        ];
+    }
+
     public function index(Request $request)
     {
         $user  = $request->user();
-        $query = Product::with('business')->where('is_active', true);
 
-        // Admin hanya lihat produk dari bisnis miliknya
+        // Eager load business beserta semua taxesnya sekaligus
+        $query = Product::with(['business.taxes'])->where('is_active', true);
+
         if ($user && $user->isAdmin()) {
             $bizIds = Business::where('owner_id', $user->id)->pluck('id');
             $query->whereIn('business_id', $bizIds);
         }
 
-        // Filter by business
         if ($request->filled('business_id')) {
             $query->where('business_id', $request->business_id);
         }
 
-        // Search by name or sku
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->search . '%')
@@ -33,7 +78,6 @@ class ProductController extends Controller
             });
         }
 
-        // Filter by price range
         if ($request->filled('min_price')) {
             $query->where('price', '>=', $request->min_price);
         }
@@ -41,7 +85,6 @@ class ProductController extends Controller
             $query->where('price', '<=', $request->max_price);
         }
 
-        // Sort
         $sortBy  = $request->get('sort_by', 'name');
         $sortDir = $request->get('sort_dir', 'asc');
         $query->orderBy($sortBy, $sortDir);
@@ -49,32 +92,9 @@ class ProductController extends Controller
         $perPage  = $request->get('per_page', 20);
         $products = $query->paginate($perPage);
 
-        $products->getCollection()->transform(function ($product) {
-            return [
-                'id'               => $product->id,
-                'business_id'      => $product->business_id,
-                'name'             => $product->name,
-                'description'      => $product->description,
-                'sku'              => $product->sku,
-                'price'            => $product->price,
-                'discount_percent' => (float) $product->discount_percent,
-                'discounted_price' => $product->discounted_price,
-                'stock'            => $product->stock,
-                'is_active'        => $product->is_active,
-                'image_url'        => $product->image_url,
-                'business' => $product->business ? [
-                    'id'       => $product->business->id,
-                    'name'     => $product->business->name,
-                    'tax_name' => $product->business->tax_name,
-                    'tax_rate' => (float) $product->business->tax_rate,
-                    'logo_url' => $product->business->logo_url,
-                    'address'  => $product->business->address,
-                    'phone'    => $product->business->phone,
-                    'city'     => $product->business->city,
-                    'qris_image_url' => $product->business->qris_image_url,
-                ] : null,
-            ];
-        });
+        $products->getCollection()->transform(
+            fn($product) => $this->formatProduct($product)
+        );
 
         return response()->json($products);
     }
@@ -98,18 +118,18 @@ class ProductController extends Controller
         }
 
         $product = Product::create($data);
-        $product->load('business');
+        $product->load('business.taxes');
 
         return response()->json([
             'message' => 'Produk berhasil dibuat.',
-            'data'    => $product,
+            'data'    => $this->formatProduct($product),
         ], 201);
     }
 
     public function show(Product $product)
     {
-        $product->load('business');
-        return response()->json(['data' => $product]);
+        $product->load('business.taxes');
+        return response()->json(['data' => $this->formatProduct($product)]);
     }
 
     public function update(Request $request, Product $product)
@@ -131,7 +151,6 @@ class ProductController extends Controller
             'price', 'stock', 'is_active', 'discount_percent',
         ]);
 
-        // Hitung ulang discounted_price otomatis
         $price   = $data['price'] ?? $product->price;
         $discPct = $data['discount_percent'] ?? $product->discount_percent;
         $data['discounted_price'] = $discPct > 0
@@ -143,11 +162,11 @@ class ProductController extends Controller
         }
 
         $product->update($data);
-        $product->load('business');
+        $product->load('business.taxes');
 
         return response()->json([
             'message' => 'Produk berhasil diupdate.',
-            'data'    => $product,
+            'data'    => $this->formatProduct($product),
         ]);
     }
 
@@ -155,8 +174,6 @@ class ProductController extends Controller
     {
         $product->update(['is_active' => false]);
 
-        return response()->json([
-            'message' => 'Produk berhasil dinonaktifkan.',
-        ]);
+        return response()->json(['message' => 'Produk berhasil dinonaktifkan.']);
     }
 }

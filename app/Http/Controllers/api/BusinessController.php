@@ -13,7 +13,9 @@ class BusinessController extends Controller
     {
         $user = auth()->user();
 
-        $query = Business::orderBy('is_active', 'desc')->orderBy('name');
+        $query = Business::with(['taxes' => fn($q) => $q->orderBy('name')])
+            ->orderBy('is_active', 'desc')
+            ->orderBy('name');
 
         if ($user->isAdmin()) {
             $query->where('owner_id', $user->id);
@@ -34,17 +36,14 @@ class BusinessController extends Controller
             'name'        => 'required|string|max:255',
             'description' => 'nullable|string',
             'logo'        => 'nullable|image|max:2048',
-            'tax_name'    => 'nullable|string|max:50',
-            'tax_rate'    => 'nullable|numeric|min:0|max:100',
             'address'     => 'nullable|string|max:500',
             'phone'       => 'nullable|string|max:20',
             'city'        => 'nullable|string|max:100',
-            'qris_image' => 'nullable|image|max:2048',
+            'qris_image'  => 'nullable|image|max:2048',
         ]);
 
         $data = $request->only([
-            'name', 'description', 'tax_name', 'tax_rate',
-            'address', 'phone', 'city', // tambah
+            'name', 'description', 'address', 'phone', 'city',
         ]);
 
         $data['owner_id'] = $user->isAdmin() ? $user->id : ($request->owner_id ?? null);
@@ -61,13 +60,15 @@ class BusinessController extends Controller
 
         return response()->json([
             'message' => 'Bisnis berhasil dibuat.',
-            'data'    => $business->fresh(),
+            'data'    => $business->load(['taxes' => fn($q) => $q->orderBy('name')]),
         ], 201);
     }
 
     public function show(Business $business)
     {
-        return response()->json(['data' => $business]);
+        return response()->json([
+            'data' => $business->load(['taxes' => fn($q) => $q->orderBy('name')]),
+        ]);
     }
 
     public function update(Request $request, Business $business)
@@ -82,33 +83,27 @@ class BusinessController extends Controller
             'description' => 'nullable|string',
             'logo'        => 'nullable|image|max:2048',
             'is_active'   => 'sometimes|boolean',
-            'tax_name'    => 'nullable|string|max:50',
-            'tax_rate'    => 'nullable|numeric|min:0|max:100',
             'address'     => 'nullable|string|max:500',
             'phone'       => 'nullable|string|max:20',
             'city'        => 'nullable|string|max:100',
-            'qris_image' => 'nullable|image|max:2048',
+            'qris_image'  => 'nullable|image|max:2048',
         ]);
 
         $data = array_filter(
             $request->only([
-                'name', 'description', 'is_active', 'tax_name', 'tax_rate',
-                'address', 'phone', 'city', // tambah
+                'name', 'description', 'is_active',
+                'address', 'phone', 'city',
             ]),
             fn($v) => $v !== null && $v !== ''
         );
 
         if ($request->hasFile('logo')) {
-            if ($business->logo) {
-                Storage::disk('public')->delete($business->logo);
-            }
+            if ($business->logo) Storage::disk('public')->delete($business->logo);
             $data['logo'] = $request->file('logo')->store('businesses', 'public');
         }
 
         if ($request->hasFile('qris_image')) {
-            if ($business->qris_image) {
-                Storage::disk('public')->delete($business->qris_image);
-            }
+            if ($business->qris_image) Storage::disk('public')->delete($business->qris_image);
             $data['qris_image'] = $request->file('qris_image')->store('businesses/qris', 'public');
         }
 
@@ -116,7 +111,7 @@ class BusinessController extends Controller
 
         return response()->json([
             'message' => 'Bisnis berhasil diupdate.',
-            'data'    => $business->fresh(),
+            'data'    => $business->load(['taxes' => fn($q) => $q->orderBy('name')]),
         ]);
     }
 
@@ -129,8 +124,6 @@ class BusinessController extends Controller
 
         $business->update(['is_active' => false]);
 
-        return response()->json([
-            'message' => 'Bisnis berhasil dinonaktifkan.',
-        ]);
+        return response()->json(['message' => 'Bisnis berhasil dinonaktifkan.']);
     }
 }

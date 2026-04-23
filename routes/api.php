@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BusinessController;
+use App\Http\Controllers\Api\BusinessTaxController;
 use App\Http\Controllers\Api\FoodDetectionController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\GviStockController;
@@ -44,6 +45,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Businesses
     Route::apiResource('businesses', BusinessController::class);
     Route::post('/businesses/{business}', [BusinessController::class, 'update']); // multipart upload support
+
+    Route::get('/businesses/{business}/taxes', [BusinessTaxController::class, 'index']);
+    Route::post('/businesses/{business}/taxes', [BusinessTaxController::class, 'store']);
+    Route::put('/businesses/{business}/taxes/{tax}', [BusinessTaxController::class, 'update']);
+    Route::delete('/businesses/{business}/taxes/{tax}', [BusinessTaxController::class, 'destroy']);
+    Route::patch('/businesses/{business}/taxes/{tax}/toggle', [BusinessTaxController::class, 'toggle']);
 
     // Products (POS sendiri)
     Route::apiResource('products', ProductController::class);

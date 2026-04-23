@@ -9,7 +9,8 @@ class Business extends Model
 {
     protected $fillable = [
         'name', 'slug', 'description', 'logo', 'qris_image',
-        'is_active', 'owner_id', 'tax_name', 'tax_rate',
+        'is_active', 'owner_id',
+        // 'tax_name', 'tax_rate',
         'address', 'phone', 'city',
     ];
 
@@ -63,9 +64,26 @@ class Business extends Model
         return $this->hasMany(Transaction::class);
     }
 
+    // public function priceWithTax(int $price): int
+    // {
+    //     if ($this->tax_rate <= 0) return $price;
+    //     return (int) round($price * (1 + $this->tax_rate / 100));
+    // }
     public function priceWithTax(int $price): int
     {
-        if ($this->tax_rate <= 0) return $price;
-        return (int) round($price * (1 + $this->tax_rate / 100));
+        $totalRate = $this->activeTaxes()->sum('rate');
+        if ($totalRate <= 0) return $price;
+        return (int) round($price * (1 + $totalRate / 100));
+    }
+
+    // Tambah relasi ini
+    public function taxes()
+    {
+        return $this->hasMany(BusinessTax::class);
+    }
+
+    public function activeTaxes()
+    {
+        return $this->taxes()->where('is_active', true);
     }
 }

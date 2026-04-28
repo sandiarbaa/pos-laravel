@@ -65,4 +65,9 @@ class Product extends Model
         $base = $this->discounted_price > 0 ? $this->discounted_price : $this->price;
         return $this->business ? $this->business->priceWithTax($base) : $base;
     }
+
+    public function nutrition()
+    {
+        return $this->hasOne(Nutrition::class);
+    }
 }

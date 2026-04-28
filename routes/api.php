@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\FoodDetectionController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\GviStockController;
 use App\Http\Controllers\Api\KitchenController;
+use App\Http\Controllers\Api\NutritionController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\UserController;
 
@@ -55,6 +56,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Products (POS sendiri)
     Route::apiResource('products', ProductController::class);
     Route::post('/products/{product}', [ProductController::class, 'update']); // multipart upload support
+
+    // Nutrition
+    Route::get('/products/{productId}/nutrition', [NutritionController::class, 'show']);
+    Route::post('/products/{productId}/nutrition/generate', [NutritionController::class, 'generate']);
+    Route::put('/products/{productId}/nutrition', [NutritionController::class, 'update']);
 
     // GVI-Stock proxy
     Route::prefix('gvi')->group(function () {

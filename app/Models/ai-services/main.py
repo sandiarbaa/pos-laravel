@@ -3,26 +3,30 @@ from fastapi.responses import JSONResponse
 import onnxruntime as ort
 import numpy as np
 import cv2
+from pathlib import Path
+from menu_config import CLASS_NAMES
 
 app = FastAPI()
 
-MENU_CLASSES = [
-    "nasi_goreng",
-    "ayam_geprek",
-    "mie_ayam",
-    "es_teh",
-    "jus_alpukat",
-    "tahu_goreng",
-    "tempe_goreng",
-    "telur_ceplok",
-    "rendang",
-    "ayam_goreng",
-]
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_PATH = BASE_DIR / "model" / "best.onnx"
+CLASSES_PATH = BASE_DIR / "model" / "classes.txt"
 
-session = ort.InferenceSession("model/best.onnx")
+
+def load_menu_classes() -> list[str]:
+    if CLASSES_PATH.exists():
+        classes = [line.strip() for line in CLASSES_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
+        if classes:
+            return classes
+    return CLASS_NAMES
+
+
+MENU_CLASSES = load_menu_classes()
+
+session = ort.InferenceSession(str(MODEL_PATH))
 
 def preprocess(img: np.ndarray) -> np.ndarray:
-    img = cv2.resize(img, (640, 640))
+    img = cv2.resize(img, (320, 320))
     img = img[:, :, ::-1]
     img = img / 255.0
     img = np.transpose(img, (2, 0, 1))
@@ -64,6 +68,10 @@ def postprocess(outputs, conf_threshold=0.2):
 @app.post("/detect")
 async def detect(file: UploadFile = File(...)):
     contents = await file.read()
+
+    if not contents:
+        return JSONResponse(status_code=400, content={"error": "File kosong"})
+
     nparr = np.frombuffer(contents, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 

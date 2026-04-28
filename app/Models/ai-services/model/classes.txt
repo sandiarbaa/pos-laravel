@@ -1,0 +1,14 @@
+jus_alpukat
+jus_buah_naga
+jus_jambu
+jus_mangga
+jus_melon
+jus_nanas
+jus_semangka
+jus_sirsak
+jus_tomat
+jus_wortel
+roti_bakar_coklat
+roti_bakar_keju
+salad_sayur
+salad_sayur_telur

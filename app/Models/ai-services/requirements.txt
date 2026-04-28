@@ -1,6 +1,20 @@
+# Main inference server
 fastapi
 uvicorn
 onnxruntime
+onnx
 numpy
 opencv-python-headless
 python-multipart
+
+# Training
+ultralytics>=8.0.0
+roboflow
+torch
+torchvision
+Pillow
+
+# Dataset preparation
+bing-image-downloader
+icrawler
+requests

@@ -19,23 +19,39 @@ class FoodDetectionController extends Controller
     public function detect(Request $request)
     {
         $request->validate([
-            'image'       => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
-            'business_id' => 'nullable|integer',
-            'confidence'  => 'nullable|numeric|min:0.1|max:0.95',
+            'image' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
         ]);
 
-        try {
-            $imageFile  = $request->file('image');
-            $businessId = $request->input('business_id', 1);
+        $user = $request->user()->load('business');
+        $businessId = $user->business_id;
+        $modelKey = $user->business?->model_key;
 
-            // Kirim ke Python dengan field name 'file' (sesuai FastAPI)
+        if (!$businessId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User tidak terikat ke bisnis',
+            ], 422);
+        }
+
+        if (!$modelKey) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bisnis belum punya model AI, hubungi superadmin',
+            ], 422);
+        }
+
+        try {
+            $imageFile = $request->file('image');
+
             $response = Http::timeout(30)
                 ->attach(
-                    'file',                                    // ← fix: ganti 'image' → 'file'
+                    'file',
                     file_get_contents($imageFile->path()),
                     $imageFile->getClientOriginalName()
                 )
-                ->post("{$this->mlApiUrl}/detect");
+                ->post("{$this->mlApiUrl}/detect", [
+                    'model_key' => $modelKey,
+                ]);
 
             if ($response->failed()) {
                 return response()->json([
@@ -44,16 +60,14 @@ class FoodDetectionController extends Controller
                 ], 502);
             }
 
-            $result     = $response->json();
+            $result = $response->json();
             $detections = $result['detections'] ?? [];
 
-            // Mapping label → produk di database
             $items = [];
             foreach ($detections as $det) {
-                $label = $det['label'];        // e.g. "jus_mangga"
-                $displayName = str_replace('_', ' ', $label);  // "jus mangga"
+                $label = $det['label'];
+                $displayName = str_replace('_', ' ', $label);
 
-                // Cari produk by business_id, cocokkan nama
                 $product = Product::where('business_id', $businessId)
                     ->where(function ($q) use ($label, $displayName) {
                         $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($displayName) . '%'])
@@ -72,7 +86,7 @@ class FoodDetectionController extends Controller
 
             return response()->json([
                 'success' => true,
-                'items'   => $items,         // ← Flutter expect 'items'
+                'items'   => $items,
             ]);
 
         } catch (\Exception $e) {

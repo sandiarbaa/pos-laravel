@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\KitchenController;
 use App\Http\Controllers\Api\NutritionController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\CategoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -52,6 +53,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/businesses/{business}/taxes/{tax}', [BusinessTaxController::class, 'update']);
     Route::delete('/businesses/{business}/taxes/{tax}', [BusinessTaxController::class, 'destroy']);
     Route::patch('/businesses/{business}/taxes/{tax}/toggle', [BusinessTaxController::class, 'toggle']);
+
+    // Categories
+    Route::get('/categories', [CategoryController::class, 'index']);
+    Route::post('/categories', [CategoryController::class, 'store']);
+    Route::put('/categories/{category}', [CategoryController::class, 'update']);
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
 
     // Products (POS sendiri)
     Route::apiResource('products', ProductController::class);

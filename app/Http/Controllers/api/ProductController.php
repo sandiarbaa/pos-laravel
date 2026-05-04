@@ -9,12 +9,10 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    // Helper: format satu product jadi array response
     private function formatProduct(Product $product): array
     {
         $business = $product->business;
 
-        // Ambil pajak aktif dari relasi yang sudah di-eager load
         $activeTaxes = $business
             ? $business->taxes->where('is_active', true)->values()
             : collect();
@@ -28,6 +26,12 @@ class ProductController extends Controller
         return [
             'id'               => $product->id,
             'business_id'      => $product->business_id,
+            'category'         => $product->category ? [
+                'id'    => $product->category->id,
+                'name'  => $product->category->name,
+                'color' => $product->category->color,
+                'icon'  => $product->category->icon,
+            ] : null,
             'name'             => $product->name,
             'description'      => $product->description,
             'sku'              => $product->sku,
@@ -59,8 +63,7 @@ class ProductController extends Controller
     {
         $user  = $request->user();
 
-        // Eager load business beserta semua taxesnya sekaligus
-        $query = Product::with(['business.taxes'])->where('is_active', true);
+        $query = Product::with(['business.taxes', 'category'])->where('is_active', true);
 
         if ($user && $user->isAdmin()) {
             $bizIds = Business::where('owner_id', $user->id)->pluck('id');
@@ -109,16 +112,20 @@ class ProductController extends Controller
             'price'       => 'required|integer|min:0',
             'stock'       => 'required|integer|min:0',
             'image'       => 'nullable|image|max:2048',
+            'category_id' => 'nullable|exists:categories,id',
         ]);
 
-        $data = $request->only(['business_id', 'name', 'description', 'sku', 'price', 'stock']);
+        $data = $request->only([
+            'business_id', 'name', 'description',
+            'sku', 'price', 'stock', 'category_id',
+        ]);
 
         if ($request->hasFile('image')) {
             $data['image'] = $request->file('image')->store('products', 'public');
         }
 
         $product = Product::create($data);
-        $product->load('business.taxes');
+        $product->load('business.taxes', 'category');
 
         return response()->json([
             'message' => 'Produk berhasil dibuat.',
@@ -128,7 +135,7 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        $product->load('business.taxes');
+        $product->load('business.taxes', 'category');
         return response()->json(['data' => $this->formatProduct($product)]);
     }
 
@@ -144,11 +151,12 @@ class ProductController extends Controller
             'image'            => 'nullable|image|max:2048',
             'is_active'        => 'sometimes|boolean',
             'discount_percent' => 'nullable|numeric|min:0|max:100',
+            'category_id'      => 'nullable|exists:categories,id',
         ]);
 
         $data = $request->only([
             'business_id', 'name', 'description', 'sku',
-            'price', 'stock', 'is_active', 'discount_percent',
+            'price', 'stock', 'is_active', 'discount_percent', 'category_id',
         ]);
 
         $price   = $data['price'] ?? $product->price;
@@ -162,7 +170,7 @@ class ProductController extends Controller
         }
 
         $product->update($data);
-        $product->load('business.taxes');
+        $product->load('business.taxes', 'category');
 
         return response()->json([
             'message' => 'Produk berhasil diupdate.',
@@ -173,7 +181,6 @@ class ProductController extends Controller
     public function destroy(Product $product)
     {
         $product->update(['is_active' => false]);
-
         return response()->json(['message' => 'Produk berhasil dinonaktifkan.']);
     }
 }

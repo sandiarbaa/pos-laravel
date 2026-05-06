@@ -40,10 +40,12 @@ class BusinessController extends Controller
             'phone'       => 'nullable|string|max:20',
             'city'        => 'nullable|string|max:100',
             'qris_image'  => 'nullable|image|max:2048',
+            'table_count' => 'nullable|integer|min:0|max:999', // ← TAMBAHAN
         ]);
 
         $data = $request->only([
             'name', 'description', 'address', 'phone', 'city',
+            'table_count', // ← TAMBAHAN
         ]);
 
         $data['owner_id'] = $user->isAdmin() ? $user->id : ($request->owner_id ?? null);
@@ -87,12 +89,14 @@ class BusinessController extends Controller
             'phone'       => 'nullable|string|max:20',
             'city'        => 'nullable|string|max:100',
             'qris_image'  => 'nullable|image|max:2048',
+            'table_count' => 'nullable|integer|min:0|max:999', // ← TAMBAHAN
         ]);
 
         $data = array_filter(
             $request->only([
                 'name', 'description', 'is_active',
                 'address', 'phone', 'city',
+                'table_count', // ← TAMBAHAN
             ]),
             fn($v) => $v !== null && $v !== ''
         );

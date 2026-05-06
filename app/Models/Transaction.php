@@ -21,6 +21,9 @@ class Transaction extends Model
         'midtrans_snap_token',
         'notes',
         'cancel_reason',
+        'table_number',
+        'queue_status',
+        'ready_at',
         'paid_at',
         'cancelled_at',
     ];
@@ -34,6 +37,7 @@ class Transaction extends Model
             'tax' => 'integer',
             'discount' => 'integer',
             'total' => 'integer',
+            'ready_at' => 'datetime',
         ];
     }
 

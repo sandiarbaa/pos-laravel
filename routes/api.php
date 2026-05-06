@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\NutritionController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\CustomerQueueController;
 
 /*
 |--------------------------------------------------------------------------
@@ -62,7 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Products (POS sendiri)
     Route::apiResource('products', ProductController::class);
-    Route::post('/products/{product}', [ProductController::class, 'update']); // multipart upload support
+    Route::post('/products/{product}', [ProductController::class, 'update']);
 
     // Nutrition
     Route::get('/products/{productId}/nutrition', [NutritionController::class, 'show']);
@@ -91,4 +92,9 @@ Route::prefix('kitchen')->group(function () {
     Route::patch('/items/{id}/start', [KitchenController::class, 'start']);
     Route::patch('/items/{id}/pause', [KitchenController::class, 'pause']);
     Route::patch('/items/{id}/done',  [KitchenController::class, 'done']);
+});
+
+Route::prefix('customer-queue')->group(function () {
+    Route::get('/',           [CustomerQueueController::class, 'index']);
+    Route::patch('/{id}/taken', [CustomerQueueController::class, 'taken']);
 });

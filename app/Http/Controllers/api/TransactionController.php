@@ -18,14 +18,12 @@ class TransactionController extends Controller
         $me       = $request->user();
         $kasirIds = null;
 
-        // Admin hanya lihat transaksi dari kasir miliknya
         if ($me->isAdmin()) {
             $kasirIds = User::where('owner_id', $me->id)->pluck('id');
-            // Kalau belum ada kasir → return empty
             if ($kasirIds->isEmpty()) {
                 return response()->json([
-                    'data' => ['data' => []],
-                    'meta' => ['current_page' => 1, 'last_page' => 1, 'per_page' => 15, 'total' => 0],
+                    'data'    => ['data' => []],
+                    'meta'    => ['current_page' => 1, 'last_page' => 1, 'per_page' => 15, 'total' => 0],
                     'summary' => ['total_revenue' => 0, 'total_cancelled' => 0, 'total_all' => 0],
                 ]);
             }
@@ -34,8 +32,7 @@ class TransactionController extends Controller
         $query = Transaction::with(['user:id,name,email', 'business:id,name', 'items'])
             ->orderByDesc('created_at');
 
-        if ($kasirIds) $query->whereIn('user_id', $kasirIds);
-
+        if ($kasirIds)                       $query->whereIn('user_id', $kasirIds);
         if ($request->filled('user_id'))     $query->where('user_id', $request->user_id);
         if ($request->filled('business_id')) $query->where('business_id', $request->business_id);
         if ($request->filled('status'))      $query->where('status', $request->status);
@@ -53,9 +50,8 @@ class TransactionController extends Controller
         $perPage      = $request->get('per_page', 15);
         $transactions = $query->paginate($perPage);
 
-        // Summary — ikut filter owner
         $summaryQuery = Transaction::query();
-        if ($kasirIds) $summaryQuery->whereIn('user_id', $kasirIds);
+        if ($kasirIds)                       $summaryQuery->whereIn('user_id', $kasirIds);
         if ($request->filled('user_id'))     $summaryQuery->where('user_id', $request->user_id);
         if ($request->filled('business_id')) $summaryQuery->where('business_id', $request->business_id);
         if ($request->filled('start_date'))  $summaryQuery->whereDate('created_at', '>=', $request->start_date);
@@ -95,7 +91,6 @@ class TransactionController extends Controller
 
     // ─────────────────────────────────────────────
     // POST /transactions
-    // Transaksi normal (cash langsung paid, non-cash via Midtrans)
     // ─────────────────────────────────────────────
     public function store(Request $request)
     {
@@ -103,6 +98,7 @@ class TransactionController extends Controller
             'business_id'                   => 'nullable|exists:businesses,id',
             'payment_method'                => 'required|in:cash,qris',
             'notes'                         => 'nullable|string',
+            'table_number'                  => 'nullable|string|max:10', // ← TAMBAHAN
             'items'                         => 'required|array|min:1',
             'items.*.source'                => 'nullable|in:pos,gvi',
             'items.*.product_id'            => 'nullable|exists:products,id',
@@ -129,6 +125,7 @@ class TransactionController extends Controller
                 'payment_method' => $request->payment_method,
                 'status'         => 'pending',
                 'notes'          => $request->notes,
+                'table_number'   => $request->table_number ?? null, // ← TAMBAHAN
             ]);
 
             foreach ($items as $item) {
@@ -163,7 +160,6 @@ class TransactionController extends Controller
 
     // ─────────────────────────────────────────────
     // POST /transactions/cancel-direct
-    // Kasir batal dari cart — langsung cancelled tanpa jadi "paid" dulu
     // ─────────────────────────────────────────────
     public function storeCancelled(Request $request)
     {
@@ -223,7 +219,6 @@ class TransactionController extends Controller
 
     // ─────────────────────────────────────────────
     // PUT /transactions/{id}/cancel
-    // Cancel dari superadmin di riwayat transaksi
     // ─────────────────────────────────────────────
     public function cancel(Request $request, Transaction $transaction)
     {
@@ -275,7 +270,6 @@ class TransactionController extends Controller
                 'midtrans_transaction_id' => $midtransTransId,
                 'paid_at'                 => now(),
             ]);
-            // Kurangi stok saat non-cash berhasil dibayar
             $items = $transaction->items->map(fn($i) => [
                 'product_id' => $i->product_id,
                 'quantity'   => $i->quantity,
@@ -357,13 +351,10 @@ class TransactionController extends Controller
             $qty       = $item['quantity'] ?? 1;
 
             if ($source === 'pos' && $productId) {
-                // Kurangi stok di tabel products POS
                 \App\Models\Product::where('id', $productId)
                     ->where('stock', '>', 0)
                     ->decrement('stock', $qty);
             }
-            // source 'gvi' — stok di GVI-Stock, belum dihandle di sini
-            // bisa ditambah HTTP call ke GVI-Stock API nanti
         }
     }
 
@@ -372,6 +363,8 @@ class TransactionController extends Controller
         return [
             'id'             => $t->id,
             'invoice_number' => $t->invoice_number,
+            'table_number'   => $t->table_number,   // ← TAMBAHAN
+            'queue_status'   => $t->queue_status,   // ← TAMBAHAN
             'status'         => $t->status,
             'payment_method' => $t->payment_method,
             'subtotal'       => $t->subtotal,
@@ -381,6 +374,7 @@ class TransactionController extends Controller
             'cancel_reason'  => $t->cancel_reason,
             'notes'          => $t->notes,
             'paid_at'        => $t->paid_at?->toISOString(),
+            'ready_at'       => $t->ready_at?->toISOString(), // ← TAMBAHAN
             'cancelled_at'   => $t->cancelled_at?->toISOString(),
             'created_at'     => $t->created_at->toISOString(),
             'kasir'          => $t->user
@@ -400,7 +394,9 @@ class TransactionController extends Controller
         ];
     }
 
-    // INI BUAT PRODUCTION
+    // ─────────────────────────────────────────────
+    // MIDTRANS — PRODUCTION
+    // ─────────────────────────────────────────────
     private function createMidtransSnapToken(Transaction $transaction, array $items): ?string
     {
         \Illuminate\Support\Facades\Log::info('Midtrans config', [
@@ -433,46 +429,10 @@ class TransactionController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            // \Illuminate\Support\Facades\Log::error('Midtrans Snap error: ' . $e->getMessage());
-            // return null;
             \Illuminate\Support\Facades\Log::error('Midtrans Snap error: ' . $e->getMessage());
-            // Temporary: return error message buat debug
             throw new \Exception('Midtrans error: ' . $e->getMessage());
         }
     }
-
-    // INI BUAT LOCAL DEVELOPMENT, SANDBOX MIDTRANS
-    // private function createMidtransSnapToken(Transaction $transaction, array $items): ?string
-    // {
-    //     \Midtrans\Config::$serverKey    = env('MIDTRANS_SERVER_KEY');
-    //     \Midtrans\Config::$isProduction = env('MIDTRANS_IS_PRODUCTION', false) === 'true';
-    //     \Midtrans\Config::$isSanitized  = true;
-    //     \Midtrans\Config::$is3ds        = true;
-
-    //     $itemDetails = array_map(fn($item) => [
-    //         'id'       => $item['product_id'] ?? 'gvi-' . ($item['gvi_item_variant_id'] ?? 0),
-    //         'price'    => $item['price'],
-    //         'quantity' => $item['quantity'],
-    //         'name'     => substr($item['product_name'], 0, 50),
-    //     ], $items);
-
-    //     try {
-    //         return \Midtrans\Snap::getSnapToken([
-    //             'transaction_details' => [
-    //                 'order_id'     => $transaction->invoice_number,
-    //                 'gross_amount' => $transaction->total,
-    //             ],
-    //             'item_details'     => $itemDetails,
-    //             'customer_details' => [
-    //                 'first_name' => $transaction->user->name,
-    //                 'email'      => $transaction->user->email,
-    //             ],
-    //         ]);
-    //     } catch (\Exception $e) {
-    //         \Illuminate\Support\Facades\Log::error('Midtrans Snap error: ' . $e->getMessage());
-    //         return null;
-    //     }
-    // }
 
     private function exportCsv($transactions)
     {
@@ -483,7 +443,7 @@ class TransactionController extends Controller
         );
     }
 
-        private function exportPdf($transactions)
+    private function exportPdf($transactions)
     {
         $total_revenue = $transactions->where('status', 'paid')->sum('total');
         $html = '<!DOCTYPE html><html><head><meta charset="UTF-8">

@@ -10,6 +10,7 @@ class Business extends Model
     protected $fillable = [
         'name', 'slug', 'description', 'logo', 'qris_image',
         'is_active', 'owner_id',
+        'table_count',
         // 'tax_name', 'tax_rate',
         'address', 'phone', 'city',
     ];

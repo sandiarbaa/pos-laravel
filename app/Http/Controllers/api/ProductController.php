@@ -55,6 +55,7 @@ class ProductController extends Controller
                 'phone'          => $business->phone,
                 'city'           => $business->city,
                 'qris_image_url' => $business->qris_image_url,
+                'table_count'    => $business->table_count ?? 0,
             ] : null,
         ];
     }
@@ -104,6 +105,11 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        // Konversi string kosong → null SEBELUM validasi
+        if ($request->input('category_id') === '') {
+            $request->merge(['category_id' => null]);
+        }
+
         $request->validate([
             'business_id' => 'required|exists:businesses,id',
             'name'        => 'required|string|max:255',
@@ -141,6 +147,11 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
+        // Konversi string kosong → null SEBELUM validasi
+        if ($request->input('category_id') === '') {
+            $request->merge(['category_id' => null]);
+        }
+
         $request->validate([
             'business_id'      => 'sometimes|exists:businesses,id',
             'name'             => 'sometimes|string|max:255',
@@ -156,8 +167,12 @@ class ProductController extends Controller
 
         $data = $request->only([
             'business_id', 'name', 'description', 'sku',
-            'price', 'stock', 'is_active', 'discount_percent', 'category_id',
+            'price', 'stock', 'is_active', 'discount_percent',
         ]);
+
+        if ($request->has('category_id')) {
+            $data['category_id'] = $request->input('category_id'); // sudah null kalau kosong
+        }
 
         $price   = $data['price'] ?? $product->price;
         $discPct = $data['discount_percent'] ?? $product->discount_percent;

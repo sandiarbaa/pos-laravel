@@ -40,6 +40,7 @@ class ProductController extends Controller
             'discounted_price' => $product->discounted_price,
             'final_price'      => $finalPrice,
             'stock'            => $product->stock,
+            'is_out_of_stock'  => (bool) $product->is_out_of_stock,
             'is_active'        => $product->is_active,
             'image_url'        => $product->image_url,
             'taxes'            => $activeTaxes->map(fn($tax) => [
@@ -105,7 +106,6 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
-        // Konversi string kosong → null SEBELUM validasi
         if ($request->input('category_id') === '') {
             $request->merge(['category_id' => null]);
         }
@@ -147,7 +147,6 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
-        // Konversi string kosong → null SEBELUM validasi
         if ($request->input('category_id') === '') {
             $request->merge(['category_id' => null]);
         }
@@ -171,7 +170,7 @@ class ProductController extends Controller
         ]);
 
         if ($request->has('category_id')) {
-            $data['category_id'] = $request->input('category_id'); // sudah null kalau kosong
+            $data['category_id'] = $request->input('category_id');
         }
 
         $price   = $data['price'] ?? $product->price;

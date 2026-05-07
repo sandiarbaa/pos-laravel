@@ -85,16 +85,21 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Food Detection
     Route::post('/detect-food', [FoodDetectionController::class, 'detect']);
-});
 
-Route::prefix('kitchen')->group(function () {
-    Route::get('/queue',              [KitchenController::class, 'queue']);
-    Route::patch('/items/{id}/start', [KitchenController::class, 'start']);
-    Route::patch('/items/{id}/pause', [KitchenController::class, 'pause']);
-    Route::patch('/items/{id}/done',  [KitchenController::class, 'done']);
-});
+    // Kitchen Display — protected, business_id dari token
+    Route::prefix('kitchen')->group(function () {
+        Route::get('/queue',                          [KitchenController::class, 'queue']);
+        Route::patch('/items/{id}/start',             [KitchenController::class, 'start']);
+        Route::patch('/items/{id}/pause',             [KitchenController::class, 'pause']);
+        Route::patch('/items/{id}/done',              [KitchenController::class, 'done']);
+        Route::patch('/products/{id}/toggle-stock',   [KitchenController::class, 'toggleStock']);
+        Route::get('/products',                       [KitchenController::class, 'products']);
+        Route::get('/report', [KitchenController::class, 'report']);
+    });
 
-Route::prefix('customer-queue')->group(function () {
-    Route::get('/',           [CustomerQueueController::class, 'index']);
-    Route::patch('/{id}/taken', [CustomerQueueController::class, 'taken']);
+    // Customer Queue — protected, business_id dari token
+    Route::prefix('customer-queue')->group(function () {
+        Route::get('/',             [CustomerQueueController::class, 'index']);
+        Route::patch('/{id}/taken', [CustomerQueueController::class, 'taken']);
+    });
 });

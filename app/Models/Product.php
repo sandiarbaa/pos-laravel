@@ -9,7 +9,7 @@ class Product extends Model
     protected $fillable = [
         'business_id', 'name', 'description', 'sku',
         'price', 'discount_percent', 'discounted_price',
-        'stock', 'image', 'is_active',
+        'stock', 'image', 'is_active', 'is_out_of_stock',
     ];
 
     protected $appends = ['image_url'];

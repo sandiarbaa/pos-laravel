@@ -10,7 +10,6 @@ class KitchenController extends Controller
 {
     public function queue(Request $request)
     {
-        // business_id selalu dari user yang login — tidak bisa di-spoof via query param
         $businessId = $request->user()->business_id;
 
         $items = TransactionItem::with([
@@ -109,6 +108,9 @@ class KitchenController extends Controller
 
     private function transform(TransactionItem $i): array
     {
+        $tableNumber = $i->transaction?->table_number;
+        $isTakeaway  = is_null($tableNumber) || $tableNumber === '0';
+
         return [
             'id'                       => $i->id,
             'product_name'             => $i->product_name,
@@ -130,7 +132,8 @@ class KitchenController extends Controller
                 'id'             => $i->transaction->id,
                 'invoice_number' => $i->transaction->invoice_number,
                 'created_at'     => $i->transaction->created_at->toISOString(),
-                'table_number'   => $i->transaction->table_number,
+                'table_number'   => $tableNumber,
+                'order_type'     => $isTakeaway ? 'takeaway' : 'dine_in',
             ] : null,
         ];
     }
@@ -140,7 +143,6 @@ class KitchenController extends Controller
         $product    = \App\Models\Product::findOrFail($id);
         $businessId = $request->user()->business_id;
 
-        // pastikan produk milik bisnis yang sama dengan user yang login
         if ($product->business_id !== $businessId) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
@@ -160,7 +162,6 @@ class KitchenController extends Controller
 
     public function products(Request $request)
     {
-        // business_id selalu dari user yang login
         $businessId = $request->user()->business_id;
 
         $products = \App\Models\Product::with('category')
@@ -185,22 +186,15 @@ class KitchenController extends Controller
     public function report(Request $request)
     {
         $me = $request->user();
-    
-        // ── Resolve business_id(s) berdasarkan role
-        // - kasir   → punya business_id langsung di kolom user
-        // - admin   → tidak punya business_id sendiri, tapi punya kasir2
-        //             yang masing2 punya business_id
-        // - superadmin → akses semua (tidak difilter bisnis)
+
         if ($me->isAdmin()) {
-            // Ambil semua business_id dari kasir yang dimiliki owner ini
             $businessIds = \App\Models\User::where('owner_id', $me->id)
                 ->whereNotNull('business_id')
                 ->pluck('business_id')
                 ->unique()
                 ->values();
-    
+
             if ($businessIds->isEmpty()) {
-                // Owner belum punya kasir — return kosong
                 return response()->json([
                     'summary'      => [
                         'total_items_done'        => 0,
@@ -222,21 +216,19 @@ class KitchenController extends Controller
         } elseif ($me->isKasir()) {
             $businessIds = collect([$me->business_id])->filter();
         } else {
-            // superadmin: tidak filter bisnis sama sekali
             $businessIds = null;
         }
-    
-        // --- Validasi input ---
+
         $request->validate([
-            'date_from'   => 'nullable|date',
-            'date_to'     => 'nullable|date|after_or_equal:date_from',
-            'product_name'=> 'nullable|string|max:100',
-            'category_id' => 'nullable|integer|exists:categories,id',
-            'source'      => 'nullable|in:dine-in,takeaway',
-            'table_number'=> 'nullable|string|max:20',
-            'per_page'    => 'nullable|integer|min:1|max:100',
+            'date_from'    => 'nullable|date',
+            'date_to'      => 'nullable|date|after_or_equal:date_from',
+            'product_name' => 'nullable|string|max:100',
+            'category_id'  => 'nullable|integer|exists:categories,id',
+            'source'       => 'nullable|in:dine-in,takeaway',
+            'table_number' => 'nullable|string|max:20',
+            'per_page'     => 'nullable|integer|min:1|max:100',
         ]);
-    
+
         $dateFrom    = $request->input('date_from', now()->startOfMonth()->toDateString());
         $dateTo      = $request->input('date_to',   now()->toDateString());
         $productName = $request->input('product_name');
@@ -244,8 +236,7 @@ class KitchenController extends Controller
         $source      = $request->input('source');
         $tableNumber = $request->input('table_number');
         $perPage     = $request->input('per_page', 20);
-    
-        // --- Base query: hanya item yang sudah DONE ---
+
         $query = TransactionItem::with([
                 'transaction:id,invoice_number,created_at,table_number',
                 'product:id,category_id',
@@ -253,12 +244,11 @@ class KitchenController extends Controller
             ])
             ->whereHas('transaction', function ($q) use ($businessIds, $dateFrom, $dateTo, $source, $tableNumber) {
                 $q->where('status', 'paid')
-                ->whereBetween('created_at', [
-                    $dateFrom . ' 00:00:00',
-                    $dateTo   . ' 23:59:59',
-                ]);
-    
-                // Filter bisnis — null berarti superadmin (akses semua)
+                  ->whereBetween('created_at', [
+                      $dateFrom . ' 00:00:00',
+                      $dateTo   . ' 23:59:59',
+                  ]);
+
                 if ($businessIds !== null) {
                     $q->whereIn('business_id', $businessIds);
                 }
@@ -270,18 +260,15 @@ class KitchenController extends Controller
                 }
             })
             ->where('kitchen_status', 'done');
-    
+
         if ($productName) {
             $query->where('product_name', 'like', "%{$productName}%");
         }
-    
+
         if ($categoryId) {
             $query->whereHas('product', fn($q) => $q->where('category_id', $categoryId));
         }
-    
-        // --- Summary / agregat ---
-        // ABS() di SQL supaya MIN/MAX dihitung dari nilai positif
-        // (fix bug timezone mismatch yang bikin cooking_duration_seconds negatif)
+
         $aggRow = (clone $query)
             ->whereNotNull('cooking_duration_seconds')
             ->selectRaw('
@@ -289,31 +276,30 @@ class KitchenController extends Controller
                 MIN(ABS(cooking_duration_seconds)) as fastest_sec,
                 MAX(ABS(cooking_duration_seconds)) as slowest_sec
             ')->first();
-    
+
         $summary = [
-            'total_items_done'       => (clone $query)->count(),
-            'total_quantity'         => (clone $query)->sum('quantity'),
-            'avg_cooking_seconds'    => (int) round($aggRow->avg_sec ?? 0),
-            'fastest_cooking_seconds'=> $aggRow->fastest_sec !== null ? (int) $aggRow->fastest_sec : null,
-            'slowest_cooking_seconds'=> $aggRow->slowest_sec !== null ? (int) $aggRow->slowest_sec : null,
+            'total_items_done'        => (clone $query)->count(),
+            'total_quantity'          => (clone $query)->sum('quantity'),
+            'avg_cooking_seconds'     => (int) round($aggRow->avg_sec ?? 0),
+            'fastest_cooking_seconds' => $aggRow->fastest_sec !== null ? (int) $aggRow->fastest_sec : null,
+            'slowest_cooking_seconds' => $aggRow->slowest_sec !== null ? (int) $aggRow->slowest_sec : null,
         ];
-    
-        // --- Best seller (top 10 menu berdasarkan quantity) ---
+
         $bestSellers = TransactionItem::selectRaw('
-                    product_name,
-                    SUM(quantity) as total_qty,
-                    COUNT(*) as total_orders,
-                    AVG(ABS(cooking_duration_seconds)) as avg_cooking_seconds,
-                    MIN(ABS(cooking_duration_seconds)) as min_cooking_seconds,
-                    MAX(ABS(cooking_duration_seconds)) as max_cooking_seconds
-                ')
+                product_name,
+                SUM(quantity) as total_qty,
+                COUNT(*) as total_orders,
+                AVG(ABS(cooking_duration_seconds)) as avg_cooking_seconds,
+                MIN(ABS(cooking_duration_seconds)) as min_cooking_seconds,
+                MAX(ABS(cooking_duration_seconds)) as max_cooking_seconds
+            ')
             ->whereHas('transaction', function ($q) use ($businessIds, $dateFrom, $dateTo) {
                 $q->where('status', 'paid')
-                ->whereBetween('created_at', [
-                    $dateFrom . ' 00:00:00',
-                    $dateTo   . ' 23:59:59',
-                ]);
-    
+                  ->whereBetween('created_at', [
+                      $dateFrom . ' 00:00:00',
+                      $dateTo   . ' 23:59:59',
+                  ]);
+
                 if ($businessIds !== null) {
                     $q->whereIn('business_id', $businessIds);
                 }
@@ -332,8 +318,7 @@ class KitchenController extends Controller
                 'min_cooking_seconds' => $row->min_cooking_seconds !== null ? abs((int) $row->min_cooking_seconds) : null,
                 'max_cooking_seconds' => $row->max_cooking_seconds !== null ? abs((int) $row->max_cooking_seconds) : null,
             ]);
-    
-        // --- List detail (paginated) ---
+
         $items = $query
             ->orderBy('cooking_done_at', 'desc')
             ->paginate($perPage)
@@ -359,7 +344,7 @@ class KitchenController extends Controller
                     'table_number'   => $i->transaction->table_number,
                 ] : null,
             ]);
-    
+
         return response()->json([
             'summary'      => $summary,
             'best_sellers' => $bestSellers,

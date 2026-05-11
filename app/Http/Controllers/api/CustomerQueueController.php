@@ -10,13 +10,12 @@ class CustomerQueueController extends Controller
 {
     public function index(Request $request)
     {
-        // business_id selalu dari user yang login — tidak bisa di-spoof via query param
         $businessId = $request->user()->business_id;
 
-        $transactions = Transaction::with(['items:id,transaction_id,kitchen_status'])
+        $transactions = Transaction::with(['items:id,transaction_id,product_name,quantity,kitchen_status'])
             ->where('status', 'paid')
             ->whereIn('queue_status', ['waiting', 'ready'])
-            ->whereNotNull('table_number')
+            // hapus whereNotNull — takeaway (null/0) sekarang ikut masuk
             ->where('business_id', $businessId)
             ->orderBy('paid_at', 'asc')
             ->get()
@@ -30,7 +29,6 @@ class CustomerQueueController extends Controller
         $transaction = Transaction::findOrFail($id);
         $businessId  = $request->user()->business_id;
 
-        // pastikan transaksi milik bisnis yang sama
         if ($transaction->business_id !== $businessId) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
@@ -51,15 +49,23 @@ class CustomerQueueController extends Controller
         $totalItems = $t->items->count();
         $doneItems  = $t->items->where('kitchen_status', 'done')->count();
 
+        $isTakeaway = is_null($t->table_number) || $t->table_number === '0';
+
         return [
             'id'             => $t->id,
             'invoice_number' => $t->invoice_number,
             'table_number'   => $t->table_number,
+            'order_type'     => $isTakeaway ? 'takeaway' : 'dine_in',
             'queue_status'   => $t->queue_status,
             'ready_at'       => $t->ready_at?->toISOString(),
             'paid_at'        => $t->paid_at?->toISOString(),
             'total_items'    => $totalItems,
             'done_items'     => $doneItems,
+            'items' => $t->items->map(fn($item) => [
+                    'product_name'   => $item->product_name,
+                    'quantity'       => $item->quantity,
+                    'kitchen_status' => $item->kitchen_status,
+                ])->values(),
         ];
     }
 }

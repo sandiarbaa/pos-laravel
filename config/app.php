@@ -65,8 +65,8 @@ return [
     |
     */
 
-    // 'timezone' => 'Asia/Jakarta',
-    'timezone' => 'America/Indiana/Indianapolis',
+    'timezone' => 'Asia/Jakarta',
+    // 'timezone' => 'America/Indiana/Indianapolis',
 
     /*
     |--------------------------------------------------------------------------

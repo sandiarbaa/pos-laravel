@@ -17,6 +17,7 @@ class CustomerQueueController extends Controller
             ->whereIn('queue_status', ['waiting', 'ready'])
             // hapus whereNotNull — takeaway (null/0) sekarang ikut masuk
             ->where('business_id', $businessId)
+            ->whereDate('paid_at', today())
             ->orderBy('paid_at', 'asc')
             ->get()
             ->map(fn($t) => $this->transform($t));

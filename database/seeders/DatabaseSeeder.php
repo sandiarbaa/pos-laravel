@@ -107,7 +107,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $bizIkj = Business::create([
-            'name'        => 'IKJ - Ini Kedai Jus',
+            'name'        => 'Ini Kedai Jus',
             'description' => 'Kedai jus & camilan sehat — #empatsehatlimaJUS',
             'owner_id'    => $ownerIkj->id,
         ]);

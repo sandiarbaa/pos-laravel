@@ -64,6 +64,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Products (POS sendiri)
     Route::apiResource('products', ProductController::class);
     Route::post('/products/{product}', [ProductController::class, 'update']);
+    Route::get('/products/qr-sheet', [ProductController::class, 'qrSheet']);
+    Route::get('/products/{product}/qr', [ProductController::class, 'qrCode']);
 
     // Nutrition
     Route::get('/products/{productId}/nutrition', [NutritionController::class, 'show']);

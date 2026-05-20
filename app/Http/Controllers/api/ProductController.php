@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
+
 
 class ProductController extends Controller
 {
@@ -196,5 +198,25 @@ class ProductController extends Controller
     {
         $product->update(['is_active' => false]);
         return response()->json(['message' => 'Produk berhasil dinonaktifkan.']);
+    }
+
+    // GET /products/{product}/qr
+    public function qrCode(Product $product)
+    {
+        $qr = QrCode::format('png')
+                    ->size(300)
+                    ->errorCorrection('H')
+                    ->generate((string) $product->id);
+
+        return response($qr, 200)
+            ->header('Content-Type', 'image/png');
+    }
+
+    // GET /products/qr-sheet — untuk print semua sekaligus
+    public function qrSheet()
+    {
+        $products = Product::where('business_id', auth()->user()->business_id)
+                        ->get();
+        return view('qr-sheet', compact('products'));
     }
 }

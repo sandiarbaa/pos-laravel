@@ -13,7 +13,7 @@ class FoodDetectionController extends Controller
 
     public function __construct()
     {
-        $this->mlApiUrl = config('services.ml_api.url', 'http://localhost:5000');
+        $this->mlApiUrl = config('services.ml_api.url', 'http://0.0.0.0:8007');
     }
 
     public function detect(Request $request)

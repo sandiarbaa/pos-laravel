@@ -1,0 +1,13 @@
+minuman
+ayam
+bebek
+iga
+lele
+ceker
+jeroan_telur
+side_dish
+nasi_ayam
+nasi_bebek
+nasi_iga
+sayuran
+spesial

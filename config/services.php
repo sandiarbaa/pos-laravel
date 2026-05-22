@@ -53,7 +53,7 @@ return [
     |--------------------------------------------------------------------------
     */
     'gvi_stock' => [
-        'url'     => env('GVI_STOCK_URL', 'http://localhost:8001'),
+        'url'     => env('GVI_STOCK_URL', 'http://0.0.0.0:8007'),
         'api_key' => env('GVI_STOCK_API_KEY'),
     ],
 

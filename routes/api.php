@@ -45,7 +45,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/users/{id}/toggle-active', [UserController::class, 'toggleActive']);
     Route::delete('/users/{id}', [UserController::class, 'destroy']);
 
-    // Businesses
+    // Businesses   
     Route::apiResource('businesses', BusinessController::class);
     Route::post('/businesses/{business}', [BusinessController::class, 'update']); // multipart upload support
 

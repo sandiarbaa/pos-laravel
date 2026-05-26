@@ -22,6 +22,7 @@ class Transaction extends Model
         'notes',
         'cancel_reason',
         'table_number',
+        'customer_name',
         'queue_status',
         'ready_at',
         'paid_at',

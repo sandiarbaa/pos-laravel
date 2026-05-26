@@ -98,7 +98,8 @@ class TransactionController extends Controller
             'business_id'                   => 'nullable|exists:businesses,id',
             'payment_method'                => 'required|in:cash,qris',
             'notes'                         => 'nullable|string',
-            'table_number'                  => 'nullable|string|max:10', // ← TAMBAHAN
+            'table_number'                  => 'nullable|string|max:10',
+            'customer_name'                 => 'nullable|string|max:100',
             'items'                         => 'required|array|min:1',
             'items.*.source'                => 'nullable|in:pos,gvi',
             'items.*.product_id'            => 'nullable|exists:products,id',
@@ -125,7 +126,8 @@ class TransactionController extends Controller
                 'payment_method' => $request->payment_method,
                 'status'         => 'pending',
                 'notes'          => $request->notes,
-                'table_number'   => $request->table_number ?? null, // ← TAMBAHAN
+                'table_number'   => $request->table_number ?? null,
+                'customer_name'  => $request->customer_name ?? null,
             ]);
 
             foreach ($items as $item) {
@@ -363,8 +365,9 @@ class TransactionController extends Controller
         return [
             'id'             => $t->id,
             'invoice_number' => $t->invoice_number,
-            'table_number'   => $t->table_number,   // ← TAMBAHAN
-            'queue_status'   => $t->queue_status,   // ← TAMBAHAN
+            'table_number'   => $t->table_number,
+            'customer_name'  => $t->customer_name,
+            'queue_status'   => $t->queue_status,
             'status'         => $t->status,
             'payment_method' => $t->payment_method,
             'subtotal'       => $t->subtotal,
@@ -374,7 +377,7 @@ class TransactionController extends Controller
             'cancel_reason'  => $t->cancel_reason,
             'notes'          => $t->notes,
             'paid_at'        => $t->paid_at?->toISOString(),
-            'ready_at'       => $t->ready_at?->toISOString(), // ← TAMBAHAN
+            'ready_at'       => $t->ready_at?->toISOString(),
             'cancelled_at'   => $t->cancelled_at?->toISOString(),
             'created_at'     => $t->created_at->toISOString(),
             'kasir'          => $t->user
@@ -394,46 +397,6 @@ class TransactionController extends Controller
         ];
     }
 
-    // ─────────────────────────────────────────────
-    // MIDTRANS — PRODUCTION
-    // ─────────────────────────────────────────────
-    private function createMidtransSnapToken(Transaction $transaction, array $items): ?string
-    {
-        \Illuminate\Support\Facades\Log::info('Midtrans config', [
-            'server_key'    => substr(config('services.midtrans.server_key'), 0, 10) . '...',
-            'is_production' => config('services.midtrans.is_production'),
-        ]);
-
-        \Midtrans\Config::$serverKey    = config('services.midtrans.server_key');
-        \Midtrans\Config::$isProduction = (bool) config('services.midtrans.is_production');
-        \Midtrans\Config::$isSanitized  = true;
-        \Midtrans\Config::$is3ds        = true;
-
-        $itemDetails = array_map(fn($item) => [
-            'id'       => $item['product_id'] ?? 'gvi-' . ($item['gvi_item_variant_id'] ?? 0),
-            'price'    => $item['price'],
-            'quantity' => $item['quantity'],
-            'name'     => substr($item['product_name'], 0, 50),
-        ], $items);
-
-        try {
-            return \Midtrans\Snap::getSnapToken([
-                'transaction_details' => [
-                    'order_id'     => $transaction->invoice_number,
-                    'gross_amount' => $transaction->total,
-                ],
-                'item_details'     => $itemDetails,
-                'customer_details' => [
-                    'first_name' => $transaction->user->name,
-                    'email'      => $transaction->user->email,
-                ],
-            ]);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Midtrans Snap error: ' . $e->getMessage());
-            throw new \Exception('Midtrans error: ' . $e->getMessage());
-        }
-    }
-
     private function exportCsv($transactions)
     {
         $filename = 'laporan-transaksi-' . now()->format('Ymd-His') . '.xlsx';
@@ -447,25 +410,25 @@ class TransactionController extends Controller
     {
         $total_revenue = $transactions->where('status', 'paid')->sum('total');
         $html = '<!DOCTYPE html><html><head><meta charset="UTF-8">
-<style>
-body { font-family: Arial, sans-serif; font-size: 11px; margin: 20px; }
-h2 { text-align: center; margin-bottom: 4px; }
-.sub { text-align: center; color: #666; margin-bottom: 16px; }
-table { width: 100%; border-collapse: collapse; }
-th { background: #1d4ed8; color: white; padding: 6px 8px; text-align: left; }
-td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; }
-tr:nth-child(even) { background: #f8fafc; }
-.paid { color: #16a34a; font-weight: bold; }
-.cancelled { color: #dc2626; font-weight: bold; }
-.summary { margin-top: 16px; text-align: right; font-weight: bold; }
-</style></head><body>
-<h2>Laporan Transaksi GVI POS</h2>
-<div class="sub">Dicetak: ' . now()->format('d/m/Y H:i') . '</div>
-<table>
-<tr>
-  <th>No</th><th>Invoice</th><th>Tanggal</th><th>Kasir</th>
-  <th>Bisnis</th><th>Metode</th><th>Status</th><th>Total</th><th>Alasan Batal</th>
-</tr>';
+                    <style>
+                    body { font-family: Arial, sans-serif; font-size: 11px; margin: 20px; }
+                    h2 { text-align: center; margin-bottom: 4px; }
+                    .sub { text-align: center; color: #666; margin-bottom: 16px; }
+                    table { width: 100%; border-collapse: collapse; }
+                    th { background: #1d4ed8; color: white; padding: 6px 8px; text-align: left; }
+                    td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; }
+                    tr:nth-child(even) { background: #f8fafc; }
+                    .paid { color: #16a34a; font-weight: bold; }
+                    .cancelled { color: #dc2626; font-weight: bold; }
+                    .summary { margin-top: 16px; text-align: right; font-weight: bold; }
+                    </style></head><body>
+                    <h2>Laporan Transaksi GVI POS</h2>
+                    <div class="sub">Dicetak: ' . now()->format('d/m/Y H:i') . '</div>
+                    <table>
+                    <tr>
+                    <th>No</th><th>Invoice</th><th>Tanggal</th><th>Kasir</th>
+                    <th>Bisnis</th><th>Metode</th><th>Status</th><th>Total</th><th>Alasan Batal</th>
+                    </tr>';
 
         foreach ($transactions as $i => $t) {
             $statusClass = $t->status === 'paid' ? 'paid' : 'cancelled';
@@ -483,8 +446,8 @@ tr:nth-child(even) { background: #f8fafc; }
         }
 
         $html .= '</table>
-<div class="summary">Total Pendapatan: Rp ' . number_format($total_revenue, 0, ',', '.') . '</div>
-</body></html>';
+                    <div class="summary">Total Pendapatan: Rp ' . number_format($total_revenue, 0, ',', '.') . '</div>
+                    </body></html>';
 
         return response($html)->header('Content-Type', 'text/html; charset=UTF-8');
     }

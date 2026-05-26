@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\Product;
+use App\Models\ProductOptionGroup;
 use Illuminate\Http\Request;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
-
 
 class ProductController extends Controller
 {
@@ -60,6 +60,16 @@ class ProductController extends Controller
                 'qris_image_url' => $business->qris_image_url,
                 'table_count'    => $business->table_count ?? 0,
             ] : null,
+
+            // ── Options (varian) ─────────────────────────────────────────
+            'option_groups' => $product->optionGroups->map(fn($group) => [
+                'id'      => $group->id,
+                'name'    => $group->name,
+                'choices' => $group->choices->map(fn($c) => [
+                    'id'    => $c->id,
+                    'label' => $c->label,
+                ])->values(),
+            ])->values(),
         ];
     }
 
@@ -67,7 +77,11 @@ class ProductController extends Controller
     {
         $user  = $request->user();
 
-        $query = Product::with(['business.taxes', 'category'])->where('is_active', true);
+        $query = Product::with([
+            'business.taxes',
+            'category',
+            'optionGroups.choices', // ← tambah eager load
+        ])->where('is_active', true);
 
         if ($user && $user->isAdmin()) {
             $bizIds = Business::where('owner_id', $user->id)->pluck('id');
@@ -113,14 +127,19 @@ class ProductController extends Controller
         }
 
         $request->validate([
-            'business_id' => 'required|exists:businesses,id',
-            'name'        => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'sku'         => 'nullable|string|unique:products,sku',
-            'price'       => 'required|integer|min:0',
-            'stock'       => 'required|integer|min:0',
-            'image'       => 'nullable|image|max:2048',
-            'category_id' => 'nullable|exists:categories,id',
+            'business_id'                      => 'required|exists:businesses,id',
+            'name'                             => 'required|string|max:255',
+            'description'                      => 'nullable|string',
+            'sku'                              => 'nullable|string|unique:products,sku',
+            'price'                            => 'required|integer|min:0',
+            'stock'                            => 'required|integer|min:0',
+            'image'                            => 'nullable|image|max:2048',
+            'category_id'                      => 'nullable|exists:categories,id',
+            // validasi options
+            'option_groups'                    => 'nullable|array',
+            'option_groups.*.name'             => 'required_with:option_groups|string|max:100',
+            'option_groups.*.choices'          => 'required_with:option_groups|array|min:1',
+            'option_groups.*.choices.*'        => 'required|string|max:100',
         ]);
 
         $data = $request->only([
@@ -133,7 +152,11 @@ class ProductController extends Controller
         }
 
         $product = Product::create($data);
-        $product->load('business.taxes', 'category');
+
+        // Simpan option groups + choices
+        $this->syncOptionGroups($product, $request->input('option_groups', []));
+
+        $product->load('business.taxes', 'category', 'optionGroups.choices');
 
         return response()->json([
             'message' => 'Produk berhasil dibuat.',
@@ -143,7 +166,7 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        $product->load('business.taxes', 'category');
+        $product->load('business.taxes', 'category', 'optionGroups.choices');
         return response()->json(['data' => $this->formatProduct($product)]);
     }
 
@@ -154,16 +177,22 @@ class ProductController extends Controller
         }
 
         $request->validate([
-            'business_id'      => 'sometimes|exists:businesses,id',
-            'name'             => 'sometimes|string|max:255',
-            'description'      => 'nullable|string',
-            'sku'              => 'nullable|string|unique:products,sku,' . $product->id,
-            'price'            => 'sometimes|integer|min:0',
-            'stock'            => 'sometimes|integer|min:0',
-            'image'            => 'nullable|image|max:2048',
-            'is_active'        => 'sometimes|boolean',
-            'discount_percent' => 'nullable|numeric|min:0|max:100',
-            'category_id'      => 'nullable|exists:categories,id',
+            'business_id'                      => 'sometimes|exists:businesses,id',
+            'name'                             => 'sometimes|string|max:255',
+            'description'                      => 'nullable|string',
+            'sku'                              => 'nullable|string|unique:products,sku,' . $product->id,
+            'price'                            => 'sometimes|integer|min:0',
+            'stock'                            => 'sometimes|integer|min:0',
+            'image'                            => 'nullable|image|max:2048',
+            'is_active'                        => 'sometimes|boolean',
+            'discount_percent'                 => 'nullable|numeric|min:0|max:100',
+            'category_id'                      => 'nullable|exists:categories,id',
+            // validasi options
+            'option_groups'                    => 'nullable|array',
+            'option_groups.*.id'               => 'nullable|integer|exists:product_option_groups,id',
+            'option_groups.*.name'             => 'required_with:option_groups|string|max:100',
+            'option_groups.*.choices'          => 'required_with:option_groups|array|min:1',
+            'option_groups.*.choices.*'        => 'required|string|max:100',
         ]);
 
         $data = $request->only([
@@ -186,7 +215,13 @@ class ProductController extends Controller
         }
 
         $product->update($data);
-        $product->load('business.taxes', 'category');
+
+        // Sync option groups jika dikirim
+        if ($request->has('option_groups')) {
+            $this->syncOptionGroups($product, $request->input('option_groups', []));
+        }
+
+        $product->load('business.taxes', 'category', 'optionGroups.choices');
 
         return response()->json([
             'message' => 'Produk berhasil diupdate.',
@@ -198,6 +233,51 @@ class ProductController extends Controller
     {
         $product->update(['is_active' => false]);
         return response()->json(['message' => 'Produk berhasil dinonaktifkan.']);
+    }
+
+    // ── Sync option groups ────────────────────────────────────────────────────
+    // Format input yang diterima:
+    // [
+    //   { "id": 1, "name": "Rasa", "choices": ["Madu", "Pedas"] },  ← existing group (update)
+    //   { "name": "Level", "choices": ["Biasa", "Extra"] },         ← group baru (create)
+    // ]
+    // Group lama yang tidak ada di input → dihapus (cascade ke choices)
+    private function syncOptionGroups(Product $product, array $groups): void
+    {
+        $incomingIds = collect($groups)
+            ->pluck('id')
+            ->filter()
+            ->toArray();
+
+        // Hapus group yang tidak ada di input
+        $product->optionGroups()
+            ->whereNotIn('id', $incomingIds)
+            ->delete();
+
+        foreach ($groups as $groupData) {
+            $groupId = $groupData['id'] ?? null;
+
+            if ($groupId) {
+                // Update existing group
+                $group = ProductOptionGroup::find($groupId);
+                if ($group && $group->product_id === $product->id) {
+                    $group->update(['name' => $groupData['name']]);
+                    // Replace semua choices
+                    $group->choices()->delete();
+                    foreach ($groupData['choices'] as $label) {
+                        $group->choices()->create(['label' => $label]);
+                    }
+                }
+            } else {
+                // Buat group baru + choices-nya
+                $group = $product->optionGroups()->create([
+                    'name' => $groupData['name'],
+                ]);
+                foreach ($groupData['choices'] as $label) {
+                    $group->choices()->create(['label' => $label]);
+                }
+            }
+        }
     }
 
     // GET /products/{product}/qr
@@ -212,11 +292,10 @@ class ProductController extends Controller
             ->header('Content-Type', 'image/png');
     }
 
-    // GET /products/qr-sheet — untuk print semua sekaligus
+    // GET /products/qr-sheet
     public function qrSheet()
     {
-        $products = Product::where('business_id', auth()->user()->business_id)
-                        ->get();
+        $products = Product::where('business_id', auth()->user()->business_id)->get();
         return view('qr-sheet', compact('products'));
     }
 }

@@ -22,6 +22,8 @@ class TransactionItem extends Model
         'cooking_done_at',
         'cooking_duration_seconds',
         'pause_duration_seconds',
+        'order_sequence',
+        'ordered_at',  
     ];
 
     protected function casts(): array

@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CustomerQueueController;
+use App\Http\Controllers\Api\OpenBillController;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,7 +21,7 @@ use App\Http\Controllers\Api\CustomerQueueController;
 |--------------------------------------------------------------------------
 */
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/webhook/midtrans', [TransactionController::class, 'webhook']);
+// Route::post('/webhook/midtrans', [TransactionController::class, 'webhook']);
 
 /*
 |--------------------------------------------------------------------------
@@ -45,7 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/users/{id}/toggle-active', [UserController::class, 'toggleActive']);
     Route::delete('/users/{id}', [UserController::class, 'destroy']);
 
-    // Businesses   
+    // Businesses
     Route::apiResource('businesses', BusinessController::class);
     Route::post('/businesses/{business}', [BusinessController::class, 'update']); // multipart upload support
 
@@ -103,5 +104,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('customer-queue')->group(function () {
         Route::get('/',             [CustomerQueueController::class, 'index']);
         Route::patch('/{id}/taken', [CustomerQueueController::class, 'taken']);
+    });
+
+
+    // Open Bill
+    Route::prefix('open-bill')->group(function () {
+        Route::get('/',           [OpenBillController::class, 'index']);
+        Route::post('/',          [OpenBillController::class, 'store']);
+        Route::get('/{id}',       [OpenBillController::class, 'show']);
+        Route::post('/{id}/append', [OpenBillController::class, 'append']);
+        Route::post('/{id}/pay',    [OpenBillController::class, 'pay']);
     });
 });

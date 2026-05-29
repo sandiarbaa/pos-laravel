@@ -182,4 +182,18 @@ class OpenBillController extends Controller
 
         return response()->json($bill->load('items'));
     }
+
+    public function destroy($id, Request $request)
+    {
+        $bill = Transaction::where('business_id', $request->user()->business_id)
+            ->where('status', 'open_bill')
+            ->findOrFail($id);
+
+        $bill->cancel_reason = 'Dibatalkan oleh kasir';
+        $bill->status = 'cancelled';
+        $bill->cancelled_at = now();
+        $bill->save();
+
+        return response()->json(['message' => 'Open bill dibatalkan']);
+    }
 }

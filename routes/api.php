@@ -114,5 +114,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}',       [OpenBillController::class, 'show']);
         Route::post('/{id}/append', [OpenBillController::class, 'append']);
         Route::post('/{id}/pay',    [OpenBillController::class, 'pay']);
+        Route::delete('/{id}', [OpenBillController::class, 'destroy']);
     });
 });

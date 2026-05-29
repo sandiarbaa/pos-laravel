@@ -18,8 +18,8 @@ class KitchenController extends Controller
                 'product.category:id,name,color',
             ])
             ->whereHas('transaction', function ($q) use ($businessId) {
-                $q->where('status', 'paid')
-                  ->where('business_id', $businessId);
+                $q->whereIn('status', ['paid', 'open_bill'])
+                    ->where('business_id', $businessId);
             })
             ->whereIn('kitchen_status', ['queued', 'cooking', 'paused'])
             ->orderBy('created_at', 'asc')

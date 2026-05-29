@@ -13,11 +13,14 @@ class CustomerQueueController extends Controller
         $businessId = $request->user()->business_id;
 
         $transactions = Transaction::with(['items:id,transaction_id,product_name,quantity,kitchen_status'])
-            ->where('status', 'paid')
+            ->whereIn('status', ['paid', 'open_bill'])  // ← tambah ini
+            ->where(function ($q) {
+                $q->whereDate('paid_at', today())
+                ->orWhere('status', 'open_bill');
+            })
             ->whereIn('queue_status', ['waiting', 'ready'])
-            // hapus whereNotNull — takeaway (null/0) sekarang ikut masuk
             ->where('business_id', $businessId)
-            ->whereDate('paid_at', today())
+            // hapus ->whereDate('paid_at', today()) yang di sini
             ->orderBy('paid_at', 'asc')
             ->get()
             ->map(fn($t) => $this->transform($t));

@@ -91,6 +91,7 @@ class OpenBillController extends Controller
                 'total'          => $request->total,
                 'status'         => 'open_bill',
                 'payment_method' => 'cash',
+                'queue_color'    => Transaction::assignQueueColor($request->user()->business_id),
             ]);
 
             $now = now();

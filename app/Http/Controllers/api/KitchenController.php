@@ -13,7 +13,7 @@ class KitchenController extends Controller
         $businessId = $request->user()->business_id;
 
         $items = TransactionItem::with([
-                'transaction:id,invoice_number,created_at,table_number',
+                'transaction:id,invoice_number,created_at,table_number,queue_color',
                 'product:id,image,category_id',
                 'product.category:id,name,color',
             ])
@@ -133,7 +133,8 @@ class KitchenController extends Controller
                 'invoice_number' => $i->transaction->invoice_number,
                 'created_at'     => $i->transaction->created_at->toISOString(),
                 'table_number'   => $tableNumber,
-                'order_type'     => $isTakeaway ? 'takeaway' : 'dine_in',
+                'order_type'  => $isTakeaway ? 'takeaway' : 'dine_in',
+                'queue_color' => $i->transaction->queue_color,
             ] : null,
         ];
     }

@@ -128,6 +128,7 @@ class TransactionController extends Controller
                 'notes'          => $request->notes,
                 'table_number'   => $request->table_number ?? null,
                 'customer_name'  => $request->customer_name ?? null,
+                'queue_color'    => Transaction::assignQueueColor($request->business_id),
             ]);
 
             foreach ($items as $item) {

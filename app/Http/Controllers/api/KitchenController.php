@@ -175,6 +175,7 @@ class KitchenController extends Controller
                 'name'            => $p->name,
                 'image_url'       => $p->image_url,
                 'is_out_of_stock' => $p->is_out_of_stock,
+                'stock'           => $p->stock,
                 'category'        => $p->category ? [
                     'name'  => $p->category->name,
                     'color' => $p->category->color,
@@ -350,6 +351,186 @@ class KitchenController extends Controller
             'summary'      => $summary,
             'best_sellers' => $bestSellers,
             'data'         => $items,
+        ]);
+    }
+
+    public function stockReport(Request $request)
+    {
+        $me = $request->user();
+
+        // Resolve business_id(s)
+        if ($me->isAdmin()) {
+            $businessIds = \App\Models\User::where('owner_id', $me->id)
+                ->whereNotNull('business_id')
+                ->pluck('business_id')
+                ->unique()
+                ->values();
+        } else {
+            $businessIds = collect([$me->business_id])->filter();
+        }
+
+        $request->validate([
+            'date_from'   => 'nullable|date',
+            'date_to'     => 'nullable|date|after_or_equal:date_from',
+            'product_id'  => 'nullable|integer|exists:products,id',
+            'category_id' => 'nullable|integer|exists:categories,id',
+        ]);
+
+        $dateFrom   = $request->input('date_from', now()->startOfMonth()->toDateString());
+        $dateTo     = $request->input('date_to',   now()->toDateString());
+        $productId  = $request->input('product_id');
+        $categoryId = $request->input('category_id');
+
+        // ── 1. Total terjual per product_id dalam periode ──────────────────────
+        $soldQuery = \App\Models\TransactionItem::query()
+            ->selectRaw('product_id, SUM(quantity) as total_sold')
+            ->whereNotNull('product_id')
+            ->whereHas('transaction', function ($q) use ($businessIds, $dateFrom, $dateTo) {
+                $q->where('status', 'paid')
+                ->whereIn('business_id', $businessIds)
+                ->whereBetween('created_at', [
+                    $dateFrom . ' 00:00:00',
+                    $dateTo   . ' 23:59:59',
+                ]);
+            })
+            ->groupBy('product_id');
+
+        $soldMap = $soldQuery->pluck('total_sold', 'product_id');
+
+        // ── 2. Adjustments per product_id dalam periode ────────────────────────
+        $adjustments = \App\Models\StockMovement::query()
+            ->selectRaw("product_id, action, SUM(qty) as total_qty")
+            ->whereIn('business_id', $businessIds)
+            ->whereBetween('created_at', [
+                $dateFrom . ' 00:00:00',
+                $dateTo   . ' 23:59:59',
+            ])
+            ->when($productId, fn($q) => $q->where('product_id', $productId))
+            ->groupBy('product_id', 'action')
+            ->get();
+
+        // Restructure: product_id => { add, subtract }
+        $adjMap = [];
+        foreach ($adjustments as $row) {
+            $pid = $row->product_id;
+            if (!isset($adjMap[$pid])) {
+                $adjMap[$pid] = ['add' => 0, 'subtract' => 0];
+            }
+            $adjMap[$pid][$row->action] = (int) $row->total_qty;
+        }
+
+        // Notes per product_id
+        $notes = \App\Models\StockMovement::query()
+            ->whereIn('business_id', $businessIds)
+            ->whereBetween('created_at', [
+                $dateFrom . ' 00:00:00',
+                $dateTo   . ' 23:59:59',
+            ])
+            ->when($productId, fn($q) => $q->where('product_id', $productId))
+            ->whereNotNull('note')
+            ->get(['product_id', 'note', 'action', 'qty', 'created_at']);
+
+        $notesMap = $notes->groupBy('product_id')->map(fn($rows) => $rows->map(fn($r) => [
+            'action'     => $r->action,
+            'qty'        => $r->qty,
+            'note'       => $r->note,
+            'created_at' => $r->created_at->toISOString(),
+        ])->values());
+
+        // ── 3. Produk ───────────────────────────────────────────────────
+        $perPage = $request->input('per_page', 20);
+
+        $productsPaginated = \App\Models\Product::with('category')
+            ->whereIn('business_id', $businessIds)
+            ->when($productId,  fn($q) => $q->where('id', $productId))
+            ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->paginate($perPage);
+
+        // ── 4. Build report ───────────────────────────────────────────────────
+        $report = $productsPaginated->getCollection()->map(function ($p) use ($soldMap, $adjMap, $notesMap) {
+            $totalSold     = (int) ($soldMap[$p->id] ?? 0);
+            $adjAdd        = (int) ($adjMap[$p->id]['add']      ?? 0);
+            $adjSubtract   = (int) ($adjMap[$p->id]['subtract'] ?? 0);
+            $currentStock  = (int) $p->stock;
+            $stockInitial  = $currentStock + $totalSold - $adjAdd + $adjSubtract;
+            $stockTeoritis = $stockInitial - $totalSold;
+            $selisih       = $currentStock - $stockTeoritis;
+            $hasAdj        = isset($adjMap[$p->id]);
+
+            if ($selisih === 0)            $flag = 'ok';
+            elseif ($hasAdj)               $flag = 'explained';
+            else                           $flag = 'unexplained';
+
+            return [
+                'product_id'              => $p->id,
+                'product_name'            => $p->name,
+                'category'                => $p->category ? [
+                    'id'    => $p->category->id,
+                    'name'  => $p->category->name,
+                    'color' => $p->category->color,
+                ] : null,
+                'current_stock'           => $currentStock,
+                'total_sold'              => $totalSold,
+                'stock_initial_estimated' => $stockInitial,
+                'adjustment' => [
+                    'total_add'      => $adjAdd,
+                    'total_subtract' => $adjSubtract,
+                    'notes'          => $notesMap[$p->id] ?? [],
+                ],
+                'stock_teoritis_akhir' => $stockTeoritis,
+                'selisih'              => $selisih,
+                'flag'                 => $flag,
+            ];
+        });
+
+        // ── 5. Summary (dari semua produk, bukan hanya halaman ini) ───────────
+        $totalProducts   = \App\Models\Product::whereIn('business_id', $businessIds)
+            ->when($productId,  fn($q) => $q->where('id', $productId))
+            ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
+            ->where('is_active', true)
+            ->count();
+
+        // Summary flag dihitung dari semua data (bukan per page)
+        // Kita pakai soldMap & adjMap yang sudah di-load semua
+        $allProducts = \App\Models\Product::whereIn('business_id', $businessIds)
+            ->when($productId,  fn($q) => $q->where('id', $productId))
+            ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
+            ->where('is_active', true)
+            ->pluck('id');
+
+        $summaryOk = 0; $summaryExplained = 0; $summaryUnexplained = 0;
+        foreach ($allProducts as $pid) {
+            $sold    = (int) ($soldMap[$pid] ?? 0);
+            $add     = (int) ($adjMap[$pid]['add'] ?? 0);
+            $sub     = (int) ($adjMap[$pid]['subtract'] ?? 0);
+            $current = \App\Models\Product::find($pid)?->stock ?? 0;
+            $initial = $current + $sold - $add + $sub;
+            $teoritis = $initial - $sold;
+            $selisih  = $current - $teoritis;
+            $hasAdj   = isset($adjMap[$pid]);
+
+            if ($selisih === 0)  $summaryOk++;
+            elseif ($hasAdj)     $summaryExplained++;
+            else                 $summaryUnexplained++;
+        }
+
+        return response()->json([
+            'summary' => [
+                'total_products'    => $totalProducts,
+                'total_ok'          => $summaryOk,
+                'total_explained'   => $summaryExplained,
+                'total_unexplained' => $summaryUnexplained,
+            ],
+            'data' => $report->values(),
+            'meta' => [
+                'current_page' => $productsPaginated->currentPage(),
+                'last_page'    => $productsPaginated->lastPage(),
+                'per_page'     => $productsPaginated->perPage(),
+                'total'        => $productsPaginated->total(),
+            ],
+            'period' => ['date_from' => $dateFrom, 'date_to' => $dateTo],
         ]);
     }
 }

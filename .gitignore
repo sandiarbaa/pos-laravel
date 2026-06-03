@@ -31,3 +31,13 @@ app/Models/ai-services/_tmp/
 app/Models/ai-services/__pycache__/
 app/Models/ai-services/*.zip
 app/Models/ai-services/dataset_roboflow.zip
+
+
+# AI Models
+app/Models/ai/
+!app/Models/ai/requirements.txt
+
+config/reverb.php
+config/broadcasting.php
+resources/js/echo.js
+routes/channels.php

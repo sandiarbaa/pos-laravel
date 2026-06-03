@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CustomerQueueController;
 use App\Http\Controllers\Api\OpenBillController;
+use App\Http\Controllers\Api\StockAdjustmentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -98,6 +99,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/products/{id}/toggle-stock',   [KitchenController::class, 'toggleStock']);
         Route::get('/products',                       [KitchenController::class, 'products']);
         Route::get('/report', [KitchenController::class, 'report']);
+        Route::get('/stock-report', [KitchenController::class, 'stockReport']);
     });
 
     // Customer Queue — protected, business_id dari token
@@ -115,5 +117,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/append', [OpenBillController::class, 'append']);
         Route::post('/{id}/pay',    [OpenBillController::class, 'pay']);
         Route::delete('/{id}', [OpenBillController::class, 'destroy']);
+    });
+
+    // Stock Adjustment
+    Route::prefix('stock-adjustments')->group(function () {
+        Route::get('/', [StockAdjustmentController::class, 'index']);
+        Route::post('/', [StockAdjustmentController::class, 'store']);
     });
 });

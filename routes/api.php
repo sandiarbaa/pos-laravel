@@ -31,6 +31,12 @@ Route::post('/login', [AuthController::class, 'login']);
 */
 // Export (di luar sanctum karena dibuka di browser — auth via query token)
 Route::get('/transactions/export', [TransactionController::class, 'export']);
+// Route::get('/stock-report/export', [KitchenController::class, 'stockReportExport']);
+Route::get('/kitchen/stock-report/export', [KitchenController::class, 'stockReportExport']);
+Route::get('/kitchen/report/export', [KitchenController::class, 'reportExport']);
+
+
+
 
 Route::middleware('auth:sanctum')->group(function () {
 

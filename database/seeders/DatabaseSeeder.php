@@ -34,7 +34,7 @@ class DatabaseSeeder extends Seeder
         // ========== SUPERADMIN ==========
         User::create([
             'name'      => 'Super Admin',
-            'email'     => 'superadmin@gvipos.com',
+            'email'     => 'superadmin@gmail.com',
             'password'  => Hash::make('password'),
             'role'      => 'superadmin',
             'is_active' => true,
@@ -43,7 +43,7 @@ class DatabaseSeeder extends Seeder
         // ========== DEMO OWNERS ==========
         $adminCafe = User::create([
             'name'      => 'Owner GVI Cafe',
-            'email'     => 'admin.cafe@gvipos.com',
+            'email'     => 'admin.cafe@gmail.com',
             'password'  => Hash::make('password'),
             'role'      => 'admin',
             'is_active' => true,
@@ -51,7 +51,7 @@ class DatabaseSeeder extends Seeder
 
         $adminRetail = User::create([
             'name'      => 'Owner GVI Retail',
-            'email'     => 'admin.retail@gvipos.com',
+            'email'     => 'admin.retail@gmail.com',
             'password'  => Hash::make('password'),
             'role'      => 'admin',
             'is_active' => true,
@@ -59,7 +59,7 @@ class DatabaseSeeder extends Seeder
 
         $adminService = User::create([
             'name'      => 'Owner GVI Service',
-            'email'     => 'admin.service@gvipos.com',
+            'email'     => 'admin.service@gmail.com',
             'password'  => Hash::make('password'),
             'role'      => 'admin',
             'is_active' => true,
@@ -67,7 +67,7 @@ class DatabaseSeeder extends Seeder
 
         $ownerAyamMaya = User::create([
             'name'      => 'Owner Ayam Maya',
-            'email'     => 'owner.ayammaya@gvipos.com',
+            'email'     => 'owner.ayammaya@gmail.com',
             'password'  => Hash::make('password'),
             'role'      => 'admin',
             'is_active' => true,
@@ -75,7 +75,7 @@ class DatabaseSeeder extends Seeder
 
         $ownerIkj = User::create([
             'name'      => 'Owner IKJ Kedai Jus',
-            'email'     => 'owner.ikj@gvipos.com',
+            'email'     => 'owner.ikj@gmail.com',
             'password'  => Hash::make('password'),
             'role'      => 'admin',
             'is_active' => true,
@@ -115,7 +115,7 @@ class DatabaseSeeder extends Seeder
         // ========== KASIR ==========
         User::create([
             'name'        => 'Kasir Cafe 1',
-            'email'       => 'kasir1.cafe@gvipos.com',
+            'email'       => 'kasir1.cafe@gmail.com',
             'password'    => Hash::make('password'),
             'role'        => 'kasir',
             'is_active'   => true,
@@ -125,7 +125,7 @@ class DatabaseSeeder extends Seeder
 
         User::create([
             'name'        => 'Kasir Retail 1',
-            'email'       => 'kasir1.retail@gvipos.com',
+            'email'       => 'kasir1.retail@gmail.com',
             'password'    => Hash::make('password'),
             'role'        => 'kasir',
             'is_active'   => true,
@@ -135,7 +135,7 @@ class DatabaseSeeder extends Seeder
 
         User::create([
             'name'        => 'Kasir Service 1',
-            'email'       => 'kasir1.service@gvipos.com',
+            'email'       => 'kasir1.service@gmail.com',
             'password'    => Hash::make('password'),
             'role'        => 'kasir',
             'is_active'   => true,
@@ -145,7 +145,7 @@ class DatabaseSeeder extends Seeder
 
         User::create([
             'name'        => 'Kasir Ayam Maya',
-            'email'       => 'kasir.ayammaya@gvipos.com',
+            'email'       => 'kasir.ayammaya@gmail.com',
             'password'    => Hash::make('password'),
             'role'        => 'kasir',
             'is_active'   => true,
@@ -155,7 +155,7 @@ class DatabaseSeeder extends Seeder
 
         User::create([
             'name'        => 'Kasir IKJ',
-            'email'       => 'kasir.ikj@gvipos.com',
+            'email'       => 'kasir.ikj@gmail.com',
             'password'    => Hash::make('password'),
             'role'        => 'kasir',
             'is_active'   => true,
@@ -372,18 +372,18 @@ class DatabaseSeeder extends Seeder
         echo "➕ Add-on (abu)     👕 Merch (pink)     🔧 Layanan (oranye)\n";
         echo "⚙️ Sparepart (indigo)\n\n";
         echo "=== SUPERADMIN ===\n";
-        echo "superadmin@gvipos.com / password\n\n";
+        echo "superadmin@gmail.com / password\n\n";
         echo "=== OWNER / ADMIN ===\n";
-        echo "owner.ayammaya@gvipos.com / password\n";
-        echo "owner.ikj@gvipos.com / password\n";
-        echo "admin.cafe@gvipos.com / password\n";
-        echo "admin.retail@gvipos.com / password\n";
-        echo "admin.service@gvipos.com / password\n\n";
+        echo "owner.ayammaya@gmail.com / password\n";
+        echo "owner.ikj@gmail.com / password\n";
+        echo "admin.cafe@gmail.com / password\n";
+        echo "admin.retail@gmail.com / password\n";
+        echo "admin.service@gmail.com / password\n\n";
         echo "=== KASIR ===\n";
-        echo "kasir.ayammaya@gvipos.com / password\n";
-        echo "kasir.ikj@gvipos.com / password\n";
-        echo "kasir1.cafe@gvipos.com / password\n";
-        echo "kasir1.retail@gvipos.com / password\n";
-        echo "kasir1.service@gvipos.com / password\n";
+        echo "kasir.ayammaya@gmail.com / password\n";
+        echo "kasir.ikj@gmail.com / password\n";
+        echo "kasir1.cafe@gmail.com / password\n";
+        echo "kasir1.retail@gmail.com / password\n";
+        echo "kasir1.service@gmail.com / password\n";
     }
 }
